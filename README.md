@@ -5,7 +5,7 @@ Now 11 (6 centered, 3 linear, 2 EQ) animated effects.
 
 It uses:
 - NeoPixelBus library https://github.com/Makuna/NeoPixelBus
-- FHT library http://wiki.openmusiclabs.com/wiki/ArduinoFHT
+- FHT library http://wiki.openmusiclabs.com/wiki/ArduinoFHT <i>(not compatible for ESPxx)</i>
 - ArduinoFFT https://github.com/kosme/arduinoFFT <i>(in old release, or for ESP8266/ESP32)</i>
 - EncButton library https://github.com/GyverLibs/EncButton
 - Mic on MAX9814 amplifier (or any similar), or any line-input audio signal.
