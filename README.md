@@ -3,7 +3,7 @@ Arduino Color-Music is an audio reactive VU Meter for WS181x LED Strip.
 
 Now 11 (6 centered, 3 linear, 2 EQ) animated effects.
 
-It uses:
+<b>Software and hardware:</b>
 - NeoPixelBus library https://github.com/Makuna/NeoPixelBus
 - FHT library http://wiki.openmusiclabs.com/wiki/ArduinoFHT <i>(not compatible for ESPxx)</i>
 - ArduinoFFT https://github.com/kosme/arduinoFFT <i>(in old release, or for ESP8266/ESP32)</i>
@@ -12,7 +12,7 @@ It uses:
 - EC11 encoder for switch modes, brightness and sensitivity.
 - Arduino Nano(328p)/ProMicro(32U4) (or any other where the specified libraries work).
 
-Список эффектов:
+<b>Список эффектов:</b>
 1. Центральный, фиксированные цвета.
 2. Линейный, фиксированные цвета.
 3. Центральный, фиксированные цвета, три сегмента.
