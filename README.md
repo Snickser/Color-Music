@@ -10,7 +10,7 @@ Now 12 (6 centered, 3 linear, 2 EQ, and random) animated effects.
 - EncButton library https://github.com/GyverLibs/EncButton
 - Mic on MAX9814 amplifier (or any similar), or any line-input audio signal.
 - EC11 encoder for switch modes, brightness and sensitivity.
-- Arduino Nano(328p)/ProMicro(32U4) (or any other where the specified libraries work).
+- Arduino Nano (or any other where the specified libraries work).
 
 <b>Список эффектов:</b>
 1. Центральный, фиксированные цвета.
