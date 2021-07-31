@@ -1,28 +1,28 @@
 #define LIN_OUT 1
-#define FHT_N 128 // set to 256 point fht
-#include <FHT.h> // include the library
+#define FHT_N 128  //set to 256 point fht
+#include <FHT.h>   //include the library
 int colorMusic[5];
 int LOWPASS[5];
 
 #include <EEPROM.h>
 byte Mode;
 
-// #define DEBUG
+//#define DEBUG
 
 byte cs = 25;        // millis
 float pfMax = 1.08;
-byte maxL = 4;       // levels for m2()
+byte maxL = 5;       // levels for m2()
 byte modeR = 4;      // minutes
 
 // mic
 const int analogInPin = A0;
 
-// LED
+// LED strip
 #include <NeoPixelBus.h>
 const uint16_t PixelCount = 100;
 const uint8_t PixelPin = 9;
 byte pxRatio = 5;     // 1 for 30Led/m, 2 for 60Led/m, 4 for 100L/m, 8 for 144L/m
-byte brC = 5;         // brightnes 1 maximum, 254 minimum (for encoder)
+byte brC = 7;         // brightnes 1 maximum, 254 minimum (for encoder)
 float Br = 1.0 / brC; // HSL Max 0.5/brC = level
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
@@ -58,6 +58,12 @@ void ModeSet(byte m) {
   if (PixelCount % 2) PCL = PixelCount / 2 + 1;
   else PCL = PixelCount / 2;
   switch (m) {
+    case 11:
+      Serial.println("Mode 11: hover");
+      //      EEPROM.put(0, 12);
+      PCL = PixelCount;
+      PCD = PCL * 1.5;
+      break;
     case 10:
       Serial.println("Mode 10: center + blend");
       //      EEPROM.put(0, 11);
@@ -165,7 +171,7 @@ void setup() {
 
   //  EEPROM.get(0, Mode);
   //  ModeSet(Mode);
-  ModeSet(7);
+  ModeSet(11);
 
   /*
       for (byte i = 0; i < 100; i++) {
@@ -233,13 +239,12 @@ void loop() {
     pcur = v_max - v_min;
 
     if (pcur > pmax) {
-      //if ( pcur - pmax < 70 )
       pmax = pcur;
     } else {
-      pmax *= 0.99;
+      pmax *= 0.98;
     }
-    if (pmax < PCL * 0.7 ) {
-      pmax = PCL * 0.7;
+    if (pmax < PCL) {
+      pmax = PCL;
     }
 
     if (pcur < pmin) {
@@ -272,9 +277,9 @@ void loop() {
     if (LV > sLV) {
       sLV = LV;
     } else {
-      if (sLV >= PCL * 0.6 && sLV > 30) {
+      if (sLV > PCL * 0.6 && sLV > 30) {
         sLV -= 3;
-      } else if (sLV >= PCL * 0.6 || sLV > 10) {
+      } else if (sLV > PCL * 0.6 || sLV > 10) {
         sLV -= 2;
       } else if (sLV > 0 ) {
         sLV--;
@@ -302,6 +307,9 @@ void loop() {
 #endif
 
     switch (Mode) {
+      case 11:
+        m11(LV);
+        break;
       case 10:
         blank(0);
         m8(sLV, 1);
@@ -342,23 +350,18 @@ void loop() {
 
   } // end modes
 
-  /* blink
-    if ( tNow - timeB > 1000 ) {
+  // blink
+  if ( tNow - timeB > 1000 ) {
     timeB = tNow;
-        if (bb) {
-          digitalWrite(17, 0);
-          bb = 0;
-        }
-        else {
-          digitalWrite(17, 1);
-          bb = 1;
-        }
-      if (digitalRead(ButtonPin)) {
-      ModeSet(++Mode);
-      timeL = tNow;
-      }
+    if (bb) {
+      digitalWrite(17, 0);
+      bb = 0;
     }
-  */
+    else {
+      digitalWrite(17, 1);
+      bb = 1;
+    }
+  } //
 
   // random Mode
   if ( (tNow - timeL) / 1000 > 60 * modeR) {
@@ -436,12 +439,10 @@ void analyzeAudio() {
     int k = analogRead(analogInPin);
     fht_input[i] = k; // put real data into bins
   }
-
   fht_window(); // window the data for better frequency response
   fht_reorder(); // reorder the data before doing the fht
   fht_run(); // process the data in the fht
-
-  //  fht_mag_log();
+  //fht_mag_log();
   fht_mag_lin(); // take the output of the fht
 }
 
@@ -451,21 +452,21 @@ void autoLowPass() {
   LOWPASS[2] = 0;
   LOWPASS[3] = 0;
   LOWPASS[4] = 0;
-  for (int i = 0; i < 100; i++) {          // делаем 100 измерений
+  for (int i = 0; i < 50; i++) {
     analyzeAudio();                         // разбить в спектр
-    for (byte j = 2; j < 3; j++) {         // первые 2 канала - хлам
+    for (int j = 2; j < 3; j++) {         // первые 2 канала - хлам
       if (fht_lin_out[j] > LOWPASS[0]) LOWPASS[0] = fht_lin_out[j];
     }
-    for (byte j = 3; j < 4; j++) {
+    for (int j = 3; j < 4; j++) {
       if (fht_lin_out[j] > LOWPASS[1]) LOWPASS[1] = fht_lin_out[j];
     }
-    for (byte j = 4; j < 10; j++) {
+    for (int j = 4; j < 10; j++) {
       if (fht_lin_out[j] > LOWPASS[2]) LOWPASS[2] = fht_lin_out[j];
     }
-    for (byte j = 10; j < 18; j++) {
+    for (int j = 10; j < 18; j++) {
       if (fht_lin_out[j] > LOWPASS[3]) LOWPASS[3] = fht_lin_out[j];
     }
-    for (byte j = 18; j < FHT_N / 2; j++) {
+    for (int j = 18; j < FHT_N / 2; j++) {
       if (fht_lin_out[j] > LOWPASS[4]) LOWPASS[4] = fht_lin_out[j];
     }
   }
@@ -503,6 +504,248 @@ void marker(int n, float c1, float c2, byte m) {
 //////////////////////////////////////////////////////////////////
 // Modes
 //////////////////////////////////////////////////////////////////
+
+void m6() {
+
+  //  ModeSet(7);
+
+  colorMusic[0] = 0;
+  colorMusic[1] = 0;
+  colorMusic[2] = 0;
+  colorMusic[3] = 0;
+  colorMusic[4] = 0;
+
+  LOWPASS[4] = 3;
+
+  // get audio
+  analyzeAudio();
+
+  // lowpass filter
+  // for (int i = 0 ; i < FHT_N / 2 ; i++) {
+  //    if (fht_lin_out[i] < 20 ) fht_lin_out[i] = 0;
+  //  }
+
+  // низкие частоты (0 и 1 зашумленные!)
+  for (int i = 2; i < 3; i++) { // 3
+    if (fht_lin_out[i] <= LOWPASS[0]) fht_lin_out[i] = 0;
+    if (fht_lin_out[i] > colorMusic[0]) colorMusic[0] = fht_lin_out[i];
+  }
+  // средние частотыLOWPASS[0]
+  for (int i = 3; i < 4; i++) { // 7
+    if (fht_lin_out[i] <= LOWPASS[1]) fht_lin_out[i] = 0;
+    if (fht_lin_out[i] > colorMusic[1]) colorMusic[1] = fht_lin_out[i];
+  }
+  // средние частоты
+  for (int i = 4; i < 10; i++) { // 14
+    if (fht_lin_out[i] <= LOWPASS[2]) fht_lin_out[i] = 0;
+    if (fht_lin_out[i] > colorMusic[2]) colorMusic[2] = fht_lin_out[i];
+  }
+  // средние частоты
+  for (int i = 10; i < 18; i++) { // 22
+    if (fht_lin_out[i] <= LOWPASS[3]) fht_lin_out[i] = 0;
+    if (fht_lin_out[i] > colorMusic[3]) colorMusic[3] = fht_lin_out[i];
+  }
+  // высокие частоты
+  for (int i = 18; i < FHT_N / 2; i++) {
+    if (fht_lin_out[i] <= LOWPASS[4]) fht_lin_out[i] = 0;
+    if (fht_lin_out[i] > colorMusic[4]) colorMusic[4] = fht_lin_out[i];
+  }
+
+  pmax *= 0.992;
+  //  pmin += 0.02;
+
+  for (byte i = 0; i < 5; i++) {
+    if (colorMusic[i] > pmax) {
+      pmax = colorMusic[i];
+    }
+    //    if (colorMusic[i] < pmin) {
+    //      pmin = colorMusic[i];
+    //    }
+  }
+
+  float LV[5];
+  for (byte i = 0; i < 5; i++) {
+    LV[i] = Map(colorMusic[i], LOWPASS[i], pmax, 0, Br );
+    if (LV[i] > eLV[i]) {
+      eLV[i] = LV[i];
+    } else {
+      if (eLV[i]) eLV[i] -= 0.005;
+      if (eLV[i] < 0) eLV[i] = 0;
+    }
+  }
+
+  // #define DEBUG
+
+#ifdef DEBUG
+  if (colorMusic[0] || colorMusic[1] || colorMusic[2] || colorMusic[3] || colorMusic[4]) {
+    if (colorMusic[0] < 10) Serial.print(" ");
+    Serial.print(colorMusic[0]);
+    Serial.print(" ");
+    if (colorMusic[1] < 10) Serial.print(" ");
+    Serial.print(colorMusic[1]);
+    Serial.print(" ");
+    if (colorMusic[2] < 10) Serial.print(" ");
+    Serial.print(colorMusic[2]);
+    Serial.print(" ");
+    if (colorMusic[3] < 10) Serial.print(" ");
+    Serial.print(colorMusic[3]);
+    Serial.print(" ");
+    if (colorMusic[4] < 10) Serial.print(" ");
+    Serial.print(colorMusic[4]);
+    Serial.print(" ");
+    Serial.print(pmin);
+    Serial.print(" ");
+    Serial.print(pmax, 3);
+    Serial.println();
+  }
+#endif
+
+  HsbColor target;
+
+  PCL = PixelCount / 9 * 9;
+  int cn = PixelCount - PCL;
+  int m = PCL / 9;
+
+  int n = 0;
+
+  for (int p = 0; p < m; p++) {
+
+    int cr = 0;
+
+    n = map(1, 1, 9, 0, PCL - m);
+    target = HsbColor(0.77, 1.0f, eLV[4]);
+    strip.SetPixelColor(n + p + cr, target);
+    if (cn > 1) {
+      cr++;
+      strip.SetPixelColor(n + p + cr, target);
+    }
+
+    n = map(2, 1, 9, 0, PCL - m);
+    target = HsbColor(0, 1.0f, eLV[3]);
+    strip.SetPixelColor(n + p + cr, target);
+    if (cn > 3) {
+      cr++;
+      strip.SetPixelColor(n + p + cr, target);
+    }
+
+    n = map(3, 1, 9, 0, PCL - m);
+    target = HsbColor(0.130, 1, eLV[2]);
+    strip.SetPixelColor(n + p + cr, target);
+    if (cn > 5) {
+      cr++;
+      strip.SetPixelColor(n + p + cr, target);
+    }
+
+    n = map(4, 1, 9, 0, PCL - m);
+    target = HsbColor(0.33f, 1.0f, eLV[1]);
+    strip.SetPixelColor(n + p + cr, target);
+
+    n = Map(5, 1, 9, 0, PCL - m);
+    target = HsbColor(0.66f, 1.0f, eLV[0]);
+    strip.SetPixelColor(n + p + cr, target);
+    if (cn % 2) {
+      cr++;
+      strip.SetPixelColor(n + p + cr, target);
+    }
+
+    n = Map(6, 1, 9, 0, PCL - m);
+    target = HsbColor(0.33f, 1.0f, eLV[1]);
+    strip.SetPixelColor(n + p + cr, target);
+
+    n = Map(7, 1, 9, 0, PCL - m);
+    target = HsbColor(0.130, 1.0f, eLV[2]);
+    strip.SetPixelColor(n + p + cr , target);
+    if (cn >= 6) {
+      cr++;
+      strip.SetPixelColor(n + p + cr, target);
+    }
+
+    n = Map(8, 1, 9, 0, PCL - m );
+    target = HsbColor(0, 1.0f, eLV[3]);
+    strip.SetPixelColor(n + p + cr, target);
+    if (cn >= 4) {
+      cr++;
+      strip.SetPixelColor(n + p + cr, target);
+    }
+
+    n = Map(9, 1, 9, 0, PCL - m );
+    target = HsbColor(0.77, 1.0f, eLV[4]);
+    strip.SetPixelColor(n + p + cr, target);
+    if (cn >= 2) {
+      cr++;
+      strip.SetPixelColor(n + p + cr, target);
+    }
+
+  }
+
+  strip.Show();
+
+}
+
+void m4() {
+
+  analyzeAudio();
+
+  int LPF = 2;
+
+  // lowpass filter
+  for (int i = 2 ; i < FHT_N / 2 ; i++) {
+    if (fht_lin_out[i] < LOWPASS[0] && i == 2) fht_lin_out[i] = 0;
+    else if (fht_lin_out[i] < LOWPASS[1] && i == 3) fht_lin_out[i] = 0;
+    else if (fht_lin_out[i] < LOWPASS[2] && i < 10) fht_lin_out[i] = 0;
+    else if (fht_lin_out[i] < LOWPASS[3] && i < 18) fht_lin_out[i] = 0;
+    else if (fht_lin_out[i] < LPF) fht_lin_out[i] = 0;
+
+    //#define DEBUG_EQ
+
+#ifdef DEBUG_EQ
+    if (i < 16) {
+      if (fht_lin_out[i] < 10) Serial.print(" ");
+      Serial.print(fht_lin_out[i], 1);
+      Serial.print(" ");
+    }
+#endif
+
+  }
+
+#ifdef DEBUG_EQ
+  Serial.println();
+#endif
+
+  int pmax = 0;
+  HsbColor target;
+
+  for (int i = FHT_N / 2 - 1; i > 1 ; i--) {
+
+    if (fht_lin_out[i] > pmax) pmax = fht_lin_out[i];
+
+    int m = round(Map(i, 2, FHT_N / 2 - 1, PCL, PixelCount - 1));
+    if (fht_lin_out[i] > LPF) {
+      float LV = Map(fht_lin_out[i], LPF, pmax, 0, Br );
+      target = HsbColor( (i - 2) * (360. / (FHT_N / 2)) / 360., 1.0, LV);
+      RgbColor color = strip.GetPixelColor(m);
+      HsbColor c = color;
+      if (target.B < c.B && target.B > 0) {
+        target.B = Br;
+      }
+      strip.SetPixelColor(m, target);
+      strip.SetPixelColor(PixelCount - m - 1, target);
+    } else {
+      RgbColor color = strip.GetPixelColor(m);
+      HsbColor c = color;
+      /*      if (c.B > Br / 4) {
+              c.B -= 0.005;
+              } else {
+      */
+      c.B -= 0.015;
+      //      }
+      if (c.B < 0 ) c.B = 0;
+      strip.SetPixelColor(m, c);
+      strip.SetPixelColor(PixelCount - m - 1, c);
+    }
+  }
+  strip.Show();
+}
 
 float RBn;
 float slow;
@@ -691,248 +934,6 @@ void m7(int n) {
   }
 }
 
-void m6() {
-
-  //  ModeSet(7);
-
-  colorMusic[0] = 0;
-  colorMusic[1] = 0;
-  colorMusic[2] = 0;
-  colorMusic[3] = 0;
-  colorMusic[4] = 0;
-
-  LOWPASS[4] = 3;
-
-  // get audio
-  analyzeAudio();
-
-  // lowpass filter
-  // for (int i = 0 ; i < FHT_N / 2 ; i++) {
-  //    if (fht_lin_out[i] < 20 ) fht_lin_out[i] = 0;
-  //  }
-
-  // низкие частоты (0 и 1 зашумленные!)
-  for (byte i = 2; i < 3; i++) { // 3
-    if (fht_lin_out[i] <= LOWPASS[0]) fht_lin_out[i] = 0;
-    if (fht_lin_out[i] > colorMusic[0]) colorMusic[0] = fht_lin_out[i];
-  }
-  // средние частотыLOWPASS[0]
-  for (byte i = 3; i < 4; i++) { // 7
-    if (fht_lin_out[i] <= LOWPASS[1]) fht_lin_out[i] = 0;
-    if (fht_lin_out[i] > colorMusic[1]) colorMusic[1] = fht_lin_out[i];
-  }
-  // средние частоты
-  for (byte i = 4; i < 10; i++) { // 14
-    if (fht_lin_out[i] <= LOWPASS[2]) fht_lin_out[i] = 0;
-    if (fht_lin_out[i] > colorMusic[2]) colorMusic[2] = fht_lin_out[i];
-  }
-  // средние частоты
-  for (byte i = 10; i < 18; i++) { // 22
-    if (fht_lin_out[i] <= LOWPASS[3]) fht_lin_out[i] = 0;
-    if (fht_lin_out[i] > colorMusic[3]) colorMusic[3] = fht_lin_out[i];
-  }
-  // высокие частоты
-  for (byte i = 18; i < FHT_N / 2; i++) {
-    if (fht_lin_out[i] <= LOWPASS[4]) fht_lin_out[i] = 0;
-    if (fht_lin_out[i] > colorMusic[4]) colorMusic[4] = fht_lin_out[i];
-  }
-
-  pmax *= 0.992;
-  //  pmin += 0.02;
-
-  for (byte i = 0; i < 5; i++) {
-    if (colorMusic[i] > pmax) {
-      pmax = colorMusic[i];
-    }
-    //    if (colorMusic[i] < pmin) {
-    //      pmin = colorMusic[i];
-    //    }
-  }
-
-  float LV[5];
-  for (byte i = 0; i < 5; i++) {
-    LV[i] = Map(colorMusic[i], LOWPASS[i], pmax, 0, Br );
-    if (LV[i] > eLV[i]) {
-      eLV[i] = LV[i];
-    } else {
-      if (eLV[i]) eLV[i] -= 0.005;
-      if (eLV[i] < 0) eLV[i] = 0;
-    }
-  }
-
-  // #define DEBUG
-
-#ifdef DEBUG
-  if (colorMusic[0] || colorMusic[1] || colorMusic[2] || colorMusic[3] || colorMusic[4]) {
-    if (colorMusic[0] < 10) Serial.print(" ");
-    Serial.print(colorMusic[0]);
-    Serial.print(" ");
-    if (colorMusic[1] < 10) Serial.print(" ");
-    Serial.print(colorMusic[1]);
-    Serial.print(" ");
-    if (colorMusic[2] < 10) Serial.print(" ");
-    Serial.print(colorMusic[2]);
-    Serial.print(" ");
-    if (colorMusic[3] < 10) Serial.print(" ");
-    Serial.print(colorMusic[3]);
-    Serial.print(" ");
-    if (colorMusic[4] < 10) Serial.print(" ");
-    Serial.print(colorMusic[4]);
-    Serial.print(" ");
-    Serial.print(pmin);
-    Serial.print(" ");
-    Serial.print(pmax, 3);
-    Serial.println();
-  }
-#endif
-
-  HsbColor target;
-
-  PCL = PixelCount / 9 * 9;
-  int cn = PixelCount - PCL;
-  int m = PCL / 9;
-
-  int n = 0;
-
-  for (int p = 0; p < m; p++) {
-
-    int cr = 0;
-
-    n = map(1, 1, 9, 0, PCL - m);
-    target = HsbColor(0.77, 1.0f, eLV[4]);
-    strip.SetPixelColor(n + p + cr, target);
-    if (cn > 1) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
-
-    n = map(2, 1, 9, 0, PCL - m);
-    target = HsbColor(0, 1.0f, eLV[3]);
-    strip.SetPixelColor(n + p + cr, target);
-    if (cn > 3) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
-
-    n = map(3, 1, 9, 0, PCL - m);
-    target = HsbColor(0.130, 1, eLV[2]);
-    strip.SetPixelColor(n + p + cr, target);
-    if (cn > 5) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
-
-    n = map(4, 1, 9, 0, PCL - m);
-    target = HsbColor(0.33f, 1.0f, eLV[1]);
-    strip.SetPixelColor(n + p + cr, target);
-
-    n = Map(5, 1, 9, 0, PCL - m);
-    target = HsbColor(0.66f, 1.0f, eLV[0]);
-    strip.SetPixelColor(n + p + cr, target);
-    if (cn % 2) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
-
-    n = Map(6, 1, 9, 0, PCL - m);
-    target = HsbColor(0.33f, 1.0f, eLV[1]);
-    strip.SetPixelColor(n + p + cr, target);
-
-    n = Map(7, 1, 9, 0, PCL - m);
-    target = HsbColor(0.130, 1.0f, eLV[2]);
-    strip.SetPixelColor(n + p + cr , target);
-    if (cn >= 6) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
-
-    n = Map(8, 1, 9, 0, PCL - m );
-    target = HsbColor(0, 1.0f, eLV[3]);
-    strip.SetPixelColor(n + p + cr, target);
-    if (cn >= 4) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
-
-    n = Map(9, 1, 9, 0, PCL - m );
-    target = HsbColor(0.77, 1.0f, eLV[4]);
-    strip.SetPixelColor(n + p + cr, target);
-    if (cn >= 2) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
-
-  }
-
-  strip.Show();
-
-}
-
-void m4() {
-
-  analyzeAudio();
-
-  int LPF = 2;
-
-  // lowpass filter
-  for (int i = 2 ; i < FHT_N / 2 ; i++) {
-    if (fht_lin_out[i] < LOWPASS[0] && i == 2) fht_lin_out[i] = 0;
-    else if (fht_lin_out[i] < LOWPASS[1] && i == 3) fht_lin_out[i] = 0;
-    else if (fht_lin_out[i] < LOWPASS[2] && i < 10) fht_lin_out[i] = 0;
-    else if (fht_lin_out[i] < LOWPASS[3] && i < 18) fht_lin_out[i] = 0;
-    else if (fht_lin_out[i] < LPF) fht_lin_out[i] = 0;
-
-    //#define DEBUG_EQ
-
-#ifdef DEBUG_EQ
-    if (i < 32) {
-      if (fht_lin_out[i] < 10) Serial.print(" ");
-      Serial.print(fht_lin_out[i], 1);
-      Serial.print(" ");
-    }
-#endif
-
-  }
-
-#ifdef DEBUG_EQ
-  Serial.println();
-#endif
-
-  int pmax = 0;
-  HsbColor target;
-
-  for (byte i = FHT_N / 2 - 1; i > 1 ; i--) {
-
-    if (fht_lin_out[i] > pmax) pmax = fht_lin_out[i];
-
-    int m = round(Map(i, 2, FHT_N / 2 - 1, PCL, PixelCount - 1));
-    if (fht_lin_out[i] > LPF) {
-      float LV = Map(fht_lin_out[i], LPF, pmax, 0, Br );
-      target = HsbColor( (i - 2) * (360. / (FHT_N / 2)) / 360., 1.0, LV);
-      RgbColor color = strip.GetPixelColor(m);
-      HsbColor c = color;
-      if (target.B < c.B && target.B > 0) {
-        target.B = Br;
-      }
-      strip.SetPixelColor(m, target);
-      strip.SetPixelColor(PixelCount - m - 1, target);
-    } else {
-      RgbColor color = strip.GetPixelColor(m);
-      HsbColor c = color;
-      /*      if (c.B > Br / 4) {
-              c.B -= 0.005;
-              } else {
-      */
-      c.B -= 0.005;
-      //      }
-      if (c.B < 0 ) c.B = 0;
-      strip.SetPixelColor(m, c);
-      strip.SetPixelColor(PixelCount - m - 1, c);
-    }
-  }
-  strip.Show();
-}
-
 float lastRB;
 void m8(int n, byte m) {
 
@@ -970,4 +971,39 @@ void m8(int n, byte m) {
       }
       marker(k, RB - 0.5, RB, 1);
   }
+}
+
+int lastP;
+void m11(int n) {
+  if (millis() - timeF > 3 * 1000 || timeF == 0) {
+    timeF = millis();
+    RB = random(10) / 10.;
+  }
+  for (int i = 0; i < PCL; i++) {
+    RgbColor color = strip.GetPixelColor(i);
+    HsbColor c = color;
+    c.B -= 0.005;
+    if (c.B < 0 ) {
+      //c.H = RB;
+      //c.S = 1;
+      c.B = 0;
+    }
+    strip.SetPixelColor(i, c);
+  }
+  int p;
+  if (n > PCL * 0.15 && n > nLast) {
+    float L = Map(n, 0, PCL, Br / 2, Br);
+    while ( abs(lastP - p) < PCL / 10 ) p = random(PCL/-10, PCL - PCL / 10);
+    lastP = p;
+    RB2 = Map(n, 0, PCL, 1, 0);
+    for (int i = 0; i < PCL / 9; i++) {
+      strip.SetPixelColor(p + i, HsbColor(RB2, 1, L));
+      float nn = Map(i, 0, PCL / 9, 0, 1);
+      RgbColor res = RgbColor::LinearBlend(HsbColor(RB2, 1, L / 1.5 ), HsbColor(RB2, 1, L ), nn);
+      strip.SetPixelColor(p + i, res);
+      res = RgbColor::LinearBlend(HsbColor(RB2, 1, L ), HsbColor(RB2, 1, L / 1.5 ), nn);
+      strip.SetPixelColor(p + i + PCL / 9, res);
+    }
+  }
+  nLast = n;
 }
