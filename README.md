@@ -1,7 +1,7 @@
 # Color-Music
 Arduino Color-Music is an audio reactive VU Meter for WS181x LED strip.
 
-Now 12 (6 centered, 3 linear, 2 EQ, and random) animated effects.
+Now 12 (6 centered, 3 linear, 2 EQ, and flash) animated effects.
 
 <b>Software and hardware:</b>
 - NeoPixelBus library https://github.com/Makuna/NeoPixelBus
