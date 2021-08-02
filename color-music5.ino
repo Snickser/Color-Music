@@ -1,8 +1,10 @@
 #define LIN_OUT 1
+#define LOG_OUT 1
 #define FHT_N 128  //set to 256 point fht
 #include <FHT.h>   //include the library
 int colorMusic[5];
 int LOWPASS[5];
+unsigned long LOWP[FHT_N / 2];
 
 #include <EEPROM.h>
 byte Mode;
@@ -22,7 +24,7 @@ const int analogInPin = A0;
 const uint16_t PixelCount = 100;
 const uint8_t PixelPin = 9;
 byte pxRatio = 5;     // 1 for 30Led/m, 2 for 60Led/m, 4 for 100L/m, 8 for 144L/m
-byte brC = 7;         // brightnes 1 maximum, 254 minimum (for encoder)
+byte brC = 6;         // brightnes 1 maximum, 254 minimum (for encoder)
 float Br = 1.0 / brC; // HSL Max 0.5/brC = level
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
@@ -30,14 +32,14 @@ NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 #define S2 3
 #define KEY 4
 #include <EncButton.h>
-EncButton<EB_TICK, S1, S2, KEY> enc(INPUT);
+EncButton<EB_TICK, S1, S2, KEY> enc;
 
 HsbColor rnd;
 float RB, RB2;
 float bwL;
 byte Nc;
 unsigned long bwD;
-byte PCL;
+int PCL;
 float PCD;
 float pfMin;
 unsigned long timeL;
@@ -59,10 +61,10 @@ void ModeSet(byte m) {
   else PCL = PixelCount / 2;
   switch (m) {
     case 11:
-      Serial.println("Mode 11: hover");
+      Serial.println("Mode 11: flash");
       //      EEPROM.put(0, 12);
-      PCL = PixelCount;
-      PCD = PCL * 1.5;
+      PCL = 20; // level, not pixels
+      PCD = PCL * 1.0;
       break;
     case 10:
       Serial.println("Mode 10: center + blend");
@@ -73,7 +75,7 @@ void ModeSet(byte m) {
       Serial.println("Mode 9: linear + rainbow");
       //      EEPROM.put(0, 10);
       PCL = PixelCount;
-      PCD = PCL * 2.1;
+      PCD = PCL * 1.1;
       break;
     case 8:
       Serial.println("Mode 8: center + random");
@@ -107,7 +109,7 @@ void ModeSet(byte m) {
       Serial.println("Mode 3: linear + random");
       //      EEPROM.put(0, 4);
       PCL = PixelCount;
-      PCD = PCL * 2.1;
+      PCD = PCL * 1.1;
       break;
     case 2:
       Serial.println("Mode 2: center 3");
@@ -120,7 +122,7 @@ void ModeSet(byte m) {
       Serial.println("Mode 1: linear");
       //     EEPROM.put(0, 2);
       PCL = PixelCount;
-      PCD = PCL * 2.1;
+      PCD = PCL * 1.1;
       break;
     default:
       Serial.println("Mode 0: center");
@@ -152,6 +154,9 @@ void setup() {
   bitClear(ADCSRA, ADPS1);
   bitSet(ADCSRA, ADPS0);
 #endif
+  ADMUX = (1 << REFS0); //default Ch-0; Vref = 5V
+  ADCSRA |= (1 << ADEN) | (0 << ADSC) | (0 << ADATE); //auto-trigger OFF
+  ADCSRB = 0x00;
 
   //  delay (2000);
   Serial.println("Start");
@@ -163,7 +168,8 @@ void setup() {
 #if defined(__AVR_ATmega32U4__)     //Выключение светодиодов на Pro Micro
   delay (1000);                     //При питании по usb от компьютера нужна задержка перед выключением RXLED. Если питать от БП, то можно убрать эту строку.
   TXLED1;                           //на ProMicro выключим и TXLED
-  digitalWrite(17, 1);
+#define LED_BUILTIN 17
+  digitalWrite(LED_BUILTIN, 1);
 #endif
 
   attachInterrupt(digitalPinToInterrupt(S1), isr, CHANGE);  // D2
@@ -263,7 +269,8 @@ void loop() {
 
     if (plast > pavg && pcur > pavg) {
       pavg += pcur;
-      PCD *= pfMax;
+      if (PCD > 0)PCD *= pfMax;
+      else PCD += 5;
     }
     plast = pcur;
 
@@ -279,12 +286,12 @@ void loop() {
     } else {
       if (sLV > PCL * 0.6 && sLV > 30) {
         sLV -= 3;
-      } else if (sLV > PCL * 0.6 || sLV > 10) {
+      } else if (sLV > PCL * 0.4 || sLV > 10) {
         sLV -= 2;
       } else if (sLV > 0 ) {
         sLV--;
       } else {
-        PCD *= 0.992;
+        PCD -= 0.2; //*0.992;
       }
     }
 
@@ -323,7 +330,7 @@ void loop() {
         m8(sLV, 0);
         break;
       case 7:
-        m7(sLV);
+        m7(LV);
         break;
       case 5:
         blank(0);
@@ -354,11 +361,11 @@ void loop() {
   if ( tNow - timeB > 1000 ) {
     timeB = tNow;
     if (bb) {
-      digitalWrite(17, 0);
+      digitalWrite(LED_BUILTIN, 0);
       bb = 0;
     }
     else {
-      digitalWrite(17, 1);
+      digitalWrite(LED_BUILTIN, 1);
       bb = 1;
     }
   } //
@@ -437,6 +444,8 @@ void encoder() {
 void analyzeAudio() {
   for (int i = 0 ; i < FHT_N ; i++) { // save FHT_N
     int k = analogRead(analogInPin);
+    k -= 0x0200; // form into a signed int
+    k <<= 6; // form into a 16b signed int
     fht_input[i] = k; // put real data into bins
   }
   fht_window(); // window the data for better frequency response
@@ -447,13 +456,25 @@ void analyzeAudio() {
 }
 
 void autoLowPass() {
-  LOWPASS[0] = 0;
-  LOWPASS[1] = 0;
-  LOWPASS[2] = 0;
-  LOWPASS[3] = 0;
-  LOWPASS[4] = 0;
-  for (int i = 0; i < 50; i++) {
-    analyzeAudio();                         // разбить в спектр
+
+    LOWPASS[0] = 0;
+    LOWPASS[1] = 0;
+    LOWPASS[2] = 0;
+    LOWPASS[3] = 0;
+    LOWPASS[4] = 0;
+  
+  for (int i = 0; i < FHT_N / 2; i++) {
+    LOWP[i] = 0;
+  }
+
+  for (int i = 0; i < 40; i++) {
+
+    analyzeAudio();
+
+    for (int j = 0; j < FHT_N / 2; j++) {
+      if (fht_lin_out[j] > LOWP[j]) LOWP[j] = fht_lin_out[j];
+    }
+
     for (int j = 2; j < 3; j++) {         // первые 2 канала - хлам
       if (fht_lin_out[j] > LOWPASS[0]) LOWPASS[0] = fht_lin_out[j];
     }
@@ -515,8 +536,6 @@ void m6() {
   colorMusic[3] = 0;
   colorMusic[4] = 0;
 
-  LOWPASS[4] = 3;
-
   // get audio
   analyzeAudio();
 
@@ -527,26 +546,31 @@ void m6() {
 
   // низкие частоты (0 и 1 зашумленные!)
   for (int i = 2; i < 3; i++) { // 3
+    //colorMusic[0] += fht_lin_out[i];
     if (fht_lin_out[i] <= LOWPASS[0]) fht_lin_out[i] = 0;
     if (fht_lin_out[i] > colorMusic[0]) colorMusic[0] = fht_lin_out[i];
   }
   // средние частотыLOWPASS[0]
   for (int i = 3; i < 4; i++) { // 7
+    //colorMusic[1] += fht_lin_out[i];
     if (fht_lin_out[i] <= LOWPASS[1]) fht_lin_out[i] = 0;
     if (fht_lin_out[i] > colorMusic[1]) colorMusic[1] = fht_lin_out[i];
   }
   // средние частоты
   for (int i = 4; i < 10; i++) { // 14
+    //colorMusic[2] += fht_lin_out[i];
     if (fht_lin_out[i] <= LOWPASS[2]) fht_lin_out[i] = 0;
     if (fht_lin_out[i] > colorMusic[2]) colorMusic[2] = fht_lin_out[i];
   }
   // средние частоты
   for (int i = 10; i < 18; i++) { // 22
+    //colorMusic[3] += fht_lin_out[i];
     if (fht_lin_out[i] <= LOWPASS[3]) fht_lin_out[i] = 0;
     if (fht_lin_out[i] > colorMusic[3]) colorMusic[3] = fht_lin_out[i];
   }
   // высокие частоты
   for (int i = 18; i < FHT_N / 2; i++) {
+    //colorMusic[4] += fht_lin_out[i];
     if (fht_lin_out[i] <= LOWPASS[4]) fht_lin_out[i] = 0;
     if (fht_lin_out[i] > colorMusic[4]) colorMusic[4] = fht_lin_out[i];
   }
@@ -554,18 +578,24 @@ void m6() {
   pmax *= 0.992;
   //  pmin += 0.02;
 
+  /*  colorMusic[0] /= 400;
+    colorMusic[1] /= 500;
+    colorMusic[2] /= 800;
+    colorMusic[3] /= 1100;
+    colorMusic[4] /= 1200;
+  */
   for (byte i = 0; i < 5; i++) {
     if (colorMusic[i] > pmax) {
       pmax = colorMusic[i];
     }
-    //    if (colorMusic[i] < pmin) {
-    //      pmin = colorMusic[i];
-    //    }
+    if (colorMusic[i] < pmin) {
+      pmin = colorMusic[i];
+    }
   }
 
   float LV[5];
   for (byte i = 0; i < 5; i++) {
-    LV[i] = Map(colorMusic[i], LOWPASS[i], pmax, 0, Br );
+    LV[i] = Map(colorMusic[i], 0, pmax, 0, Br );
     if (LV[i] > eLV[i]) {
       eLV[i] = LV[i];
     } else {
@@ -574,7 +604,7 @@ void m6() {
     }
   }
 
-  // #define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
   if (colorMusic[0] || colorMusic[1] || colorMusic[2] || colorMusic[3] || colorMusic[4]) {
@@ -689,14 +719,16 @@ void m4() {
   int LPF = 2;
 
   // lowpass filter
-  for (int i = 2 ; i < FHT_N / 2 ; i++) {
-    if (fht_lin_out[i] < LOWPASS[0] && i == 2) fht_lin_out[i] = 0;
-    else if (fht_lin_out[i] < LOWPASS[1] && i == 3) fht_lin_out[i] = 0;
-    else if (fht_lin_out[i] < LOWPASS[2] && i < 10) fht_lin_out[i] = 0;
-    else if (fht_lin_out[i] < LOWPASS[3] && i < 18) fht_lin_out[i] = 0;
-    else if (fht_lin_out[i] < LPF) fht_lin_out[i] = 0;
-
-    //#define DEBUG_EQ
+  for (int i = 0 ; i < FHT_N / 2 ; i++) {
+    if (fht_lin_out[i] < LOWP[i]) fht_lin_out[i] = 0;
+    //    fht_lin_out[i] /= LOWPASS[i];
+    /*    if (fht_lin_out[i] < LOWPASS[0] && i <= 2) fht_lin_out[i] = 0;
+        else if (fht_lin_out[i] < LOWPASS[1] && i == 3) fht_lin_out[i] = 0;
+        else if (fht_lin_out[i] < LOWPASS[2] && i < 10) fht_lin_out[i] = 0;
+        else if (fht_lin_out[i] < LOWPASS[3] && i < 18) fht_lin_out[i] = 0;
+        else if (fht_lin_out[i] < LOWPASS[4]) fht_lin_out[i] = 0;
+    */
+#define DEBUG_EQ
 
 #ifdef DEBUG_EQ
     if (i < 16) {
@@ -715,13 +747,12 @@ void m4() {
   int pmax = 0;
   HsbColor target;
 
-  for (int i = FHT_N / 2 - 1; i > 1 ; i--) {
-
-    if (fht_lin_out[i] > pmax) pmax = fht_lin_out[i];
-
-    int m = round(Map(i, 2, FHT_N / 2 - 1, PCL, PixelCount - 1));
+  //for (int i = FHT_N / 2 - 1; i > 1 ; i--) {
+  for (int i = 0; i < FHT_N / 2; i++) {
+    //    if (fht_lin_out[i] > pmax) pmax = fht_lin_out[i];
+    int m = round(Map(i, 0, FHT_N / 2 - 1, PCL, PixelCount - 1));
     if (fht_lin_out[i] > LPF) {
-      float LV = Map(fht_lin_out[i], LPF, pmax, 0, Br );
+      float LV = Map(fht_lin_out[i], LOWP[i], 50, 0, Br );
       target = HsbColor( (i - 2) * (360. / (FHT_N / 2)) / 360., 1.0, LV);
       RgbColor color = strip.GetPixelColor(m);
       HsbColor c = color;
@@ -975,14 +1006,14 @@ void m8(int n, byte m) {
 
 int lastP;
 void m11(int n) {
-  if (millis() - timeF > 3 * 1000 || timeF == 0) {
-    timeF = millis();
-    RB = random(10) / 10.;
-  }
-  for (int i = 0; i < PCL; i++) {
+  /* if (millis() - timeF > 3 * 1000 || timeF == 0) {
+        timeF = millis();
+        RB = random(10) / 10.;
+      } */
+  for (int i = 0; i < PixelCount; i++) {
     RgbColor color = strip.GetPixelColor(i);
     HsbColor c = color;
-    c.B -= 0.005;
+    c.B -= 0.02;
     if (c.B < 0 ) {
       //c.H = RB;
       //c.S = 1;
@@ -990,19 +1021,19 @@ void m11(int n) {
     }
     strip.SetPixelColor(i, c);
   }
-  int p;
-  if (n > PCL * 0.15 && n > nLast) {
-    float L = Map(n, 0, PCL, Br / 2, Br);
-    while ( abs(lastP - p) < PCL / 10 ) p = random(PCL/-10, PCL - PCL / 10);
+  if (n > PCL * 0.10 && n > nLast) {
+    int p;
+    while ( abs(lastP - p) < PixelCount / 8 * 2 ) p = random(0, PixelCount - PixelCount / 8) - PixelCount / 16;
     lastP = p;
     RB2 = Map(n, 0, PCL, 1, 0);
-    for (int i = 0; i < PCL / 9; i++) {
+    float L = Map(n, PCL * 0.10, PCL, Br / 4, Br);
+    for (int i = 0; i < PixelCount / 6; i++) {
       strip.SetPixelColor(p + i, HsbColor(RB2, 1, L));
-      float nn = Map(i, 0, PCL / 9, 0, 1);
-      RgbColor res = RgbColor::LinearBlend(HsbColor(RB2, 1, L / 1.5 ), HsbColor(RB2, 1, L ), nn);
+      float nn = Map(i, 0, PixelCount / 6 - 1, 0, 1);
+      RgbColor res = RgbColor::LinearBlend(HsbColor(RB2, 1, L / 2 ), HsbColor(RB2, 1, L ), nn);
       strip.SetPixelColor(p + i, res);
-      res = RgbColor::LinearBlend(HsbColor(RB2, 1, L ), HsbColor(RB2, 1, L / 1.5 ), nn);
-      strip.SetPixelColor(p + i + PCL / 9, res);
+      res = RgbColor::LinearBlend(HsbColor(RB2, 1, L ), HsbColor(RB2, 1, L / 2 ), nn);
+      strip.SetPixelColor(p + i + PixelCount / 6, res);
     }
   }
   nLast = n;
