@@ -9,7 +9,7 @@ unsigned long LOWP[FHT_N / 2];
 #include <EEPROM.h>
 byte Mode;
 
-//#define DEBUG
+// #define DEBUG
 
 byte cs = 25;        // millis
 float pfMax = 1.08;
@@ -24,9 +24,11 @@ const int analogInPin = A0;
 const uint16_t PixelCount = 100;
 const uint8_t PixelPin = 9;
 byte pxRatio = 5;     // 1 for 30Led/m, 2 for 60Led/m, 4 for 100L/m, 8 for 144L/m
-byte brC = 6;         // brightnes 1 maximum, 254 minimum (for encoder)
+byte brC = 4;         // brightnes 1 maximum, 254 minimum (for encoder)
 float Br = 1.0 / brC; // HSL Max 0.5/brC = level
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
+// NeoGamma<NeoGammaEquationMethod> colorGamma;
+NeoGamma<NeoGammaTableMethod> colorGamma;
 
 #define S1 2
 #define S2 3
@@ -177,16 +179,23 @@ void setup() {
 
   //  EEPROM.get(0, Mode);
   //  ModeSet(Mode);
-  ModeSet(11);
+  ModeSet(9);
 
-  /*
-      for (byte i = 0; i < 100; i++) {
-        float cc = Map(i, 0, 99, 0, 359);
-        strip.SetPixelColor(i, HsbColor(cc/360., 1, Br ));
-      }
-      strip.Show();
-      while (1);
-  */
+/*  while (1) {
+    long aaa = millis();
+    for (byte i = 0; i < 100; i++) {
+      float nn = Map(i, 0, 99, 0, 1);
+      float cc = Map(i, 0, 99, 0, 360);
+      //       RgbColor c = HsbColor::LinearBlend<NeoHueBlendClockwiseDirection>(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
+      HsbColor c = HsbColor(cc / 360., 1, Br );
+      //      RgbColor c = RgbColor::LinearBlend(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
+      //      c = colorGamma.Correct(c);
+      strip.SetPixelColor(i, c);
+    }
+    Serial.println(millis() - aaa);
+    strip.Show();
+  }
+*/
 
 }
 
@@ -313,6 +322,8 @@ void loop() {
     Serial.println(PCL);
 #endif
 
+//    long aaa = millis();
+
     switch (Mode) {
       case 11:
         m11(LV);
@@ -352,6 +363,8 @@ void loop() {
         blank(0);
         m0(sLV);
     }
+
+//    Serial.println(millis() - aaa);
 
     strip.Show();
 
@@ -457,12 +470,12 @@ void analyzeAudio() {
 
 void autoLowPass() {
 
-    LOWPASS[0] = 0;
-    LOWPASS[1] = 0;
-    LOWPASS[2] = 0;
-    LOWPASS[3] = 0;
-    LOWPASS[4] = 0;
-  
+  LOWPASS[0] = 0;
+  LOWPASS[1] = 0;
+  LOWPASS[2] = 0;
+  LOWPASS[3] = 0;
+  LOWPASS[4] = 0;
+
   for (int i = 0; i < FHT_N / 2; i++) {
     LOWP[i] = 0;
   }
@@ -604,7 +617,7 @@ void m6() {
     }
   }
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
   if (colorMusic[0] || colorMusic[1] || colorMusic[2] || colorMusic[3] || colorMusic[4]) {
@@ -728,7 +741,8 @@ void m4() {
         else if (fht_lin_out[i] < LOWPASS[3] && i < 18) fht_lin_out[i] = 0;
         else if (fht_lin_out[i] < LOWPASS[4]) fht_lin_out[i] = 0;
     */
-#define DEBUG_EQ
+
+// #define DEBUG_EQ
 
 #ifdef DEBUG_EQ
     if (i < 16) {
@@ -785,7 +799,6 @@ void m5(int n, byte m) {
   int j = 0;
   if (m) j = PCL;
   RBn = 1. / (PCL / (1 + m + pxRatio / 4));
-
   int k = n + PCL;
 
   //  if (n > 1) {
@@ -808,7 +821,7 @@ void m5(int n, byte m) {
     while (RB + cc > 1 || RB - cc < 0) cc--;
     switch (Nc) {
       case 1:
-        strip.SetPixelColor(i - j, HsbColor(RB + cc, 1, br ));
+        strip.SetPixelColor(i - j, HsbColor(RB + cc, 1, br));
         if (!m) strip.SetPixelColor(PixelCount - i - 1, HsbColor(RB + cc, 1, br ));
         break;
       default:
@@ -983,10 +996,10 @@ void m8(int n, byte m) {
   float L, nn;
   switch (m) {
     case 1:
-      L = Map(n, 0, PCL, Br / 2, Br );
+      L = Map(n, 2, PCL, Br / 2, Br );
       for (int i = PCL - 1; i < k - 1; i++) {
         nn = Map(i - n * 0.07, PCL, k - 4, 0, 1);
-        RgbColor res = RgbColor::LinearBlend(HsbColor(RB, 1, L ), HsbColor(RB2, 1, L ), nn);
+        HsbColor res = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(HsbColor(RB, 1, L ), HsbColor(RB2, 1, L ), nn);
         strip.SetPixelColor(i, res);
         strip.SetPixelColor(PixelCount - i - 1, res);
       }
