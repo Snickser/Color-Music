@@ -4,7 +4,7 @@ Arduino Color-Music is an audio reactive VU Meter for WS181x LED strip.
 Now 12 (6 centered, 3 linear, 2 EQ, and flash) animated effects.
 
 <b>Software and hardware:</b>
-- NeoPixelBus library https://github.com/Makuna/NeoPixelBus <i>(in old release)</i>
+- NeoPixelBus library https://github.com/Makuna/NeoPixelBus
 - FHT library http://wiki.openmusiclabs.com/wiki/ArduinoFHT <i>(not compatible for ESPxx)</i>
 - ArduinoFFT https://github.com/kosme/arduinoFFT <i>(in old release, or for ESP8266/ESP32)</i>
 - EncButton library https://github.com/GyverLibs/EncButton
