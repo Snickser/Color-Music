@@ -1,7 +1,7 @@
 # Color-Music
 Arduino Color-Music is an audio reactive VU Meter for WS181x LED strip.
 
-Now 12 (6 centered, 3 linear, 2 EQ, and flash) animated effects.
+Now 13 (7 centered, 3 linear, 2 EQ, and flash) animated effects.
 
 <b>Software and hardware:</b>
 - NeoPixelBus library https://github.com/Makuna/NeoPixelBus
@@ -25,6 +25,7 @@ Now 12 (6 centered, 3 linear, 2 EQ, and flash) animated effects.
 10. Линейный, бегущая радуга со случайным направлением палитры.
 11. Центральный, смешение двух случайных цветов.
 12. Случайные вспышки по всей ленте.
+13. Центральный, уровень с цветом + бегунок при нуле.
 
 <b>Кнопка переключает последовательно четыре режима настроек, а крутилка меняет значение -/+</b>
 1. Ручное переключение эффекта (по умолчанию)
