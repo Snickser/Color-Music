@@ -184,7 +184,7 @@ void setup() {
   //  EEPROM.get(0, Mode);
   //  ModeSet(Mode);
 
-  ModeSet(4);
+  ModeSet(5);
 
   /*
       while (1) {
@@ -409,12 +409,14 @@ void loop() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void meter(byte n) {
-  for (byte i = 1; i < n; i++) {
+void meter(byte n, byte c) {
+  for (byte i = 1; i <= n; i++) {
     if (i % 5 == 0) strip.SetPixelColor(i - 1, HsbColor(0, 1, Br ));
-    else strip.SetPixelColor(i - 1, HsbColor(0, 0, Br ));
+    else strip.SetPixelColor(i - 1, RgbColor(255 * Br));
   }
   strip.Show();
+  delay(300);
+  EEPROM.put(c, n);
 }
 
 void encoder() {
@@ -422,6 +424,7 @@ void encoder() {
     switch (bMode) {
       case 4:
         pxRatio++;
+        meter(pxRatio, 4);
         break;
       case 3:
         pfMax += 0.02;
@@ -429,13 +432,13 @@ void encoder() {
       case 2:
         cs++;
         blank(0);
-        meter(cs);
-        delay(300);
+        meter(cs, 2);
         break;
       case 1:
         brC--;
         if (brC < 1) brC = 1;
         Br = 1.0 / brC;
+        meter(brC, 1);
         break;
       default:
         Mode++;
@@ -445,6 +448,8 @@ void encoder() {
     switch (bMode) {
       case 4:
         pxRatio--;
+        if (pxRatio < 1) pxRatio = 1;
+        meter(pxRatio, 4);
         break;
       case 3:
         pfMax -= 0.02;
@@ -452,12 +457,12 @@ void encoder() {
       case 2:
         cs--;
         blank(0);
-        meter(cs);
-        delay(300);
+        meter(cs, 2);
         break;
       case 1:
         brC++;
         Br = 1.0 / brC;
+        meter(brC, 1);
         break;
       default:
         Mode--;
