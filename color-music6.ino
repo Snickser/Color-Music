@@ -184,22 +184,24 @@ void setup() {
   //  EEPROM.get(0, Mode);
   //  ModeSet(Mode);
 
-  ModeSet(6);
+  ModeSet(4);
 
-  /*  while (1) {
-      long aaa = millis();
-      for (byte i = 0; i < 100; i++) {
-        float nn = Map(i, 0, 99, 0, 1);
-        float cc = Map(i, 0, 99, 0, 360);
-        //       RgbColor c = HsbColor::LinearBlend<NeoHueBlendClockwiseDirection>(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
-        HsbColor c = HsbColor(cc / 360., 1, Br );
-        //      RgbColor c = RgbColor::LinearBlend(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
-        //      c = colorGamma.Correct(c);
-        strip.SetPixelColor(i, c);
+  /*
+      while (1) {
+        long aaa = millis();
+        for (byte i = 0; i < 100; i++) {
+          float nn = Map(i, 0, 99, 0, 1);
+          float cc = Map(i, 0, 99, 0, 360);
+          //       RgbColor c = HsbColor::LinearBlend<NeoHueBlendClockwiseDirection>(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
+              HsbColor c = HsbColor(cc / 360., 1, Br );
+          //      RgbColor c = RgbColor::LinearBlend(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
+          //      c = colorGamma.Correct(c);
+    //          RgbColor c (64,64,0);
+          strip.SetPixelColor(i, c);
+        }
+        Serial.println(millis() - aaa);
+        strip.Show();
       }
-      Serial.println(millis() - aaa);
-      strip.Show();
-    }
   */
 
 }
@@ -246,7 +248,7 @@ void loop() {
 
     long aaa = millis();
     m6();
-//        Serial.println(millis() - aaa);
+    //        Serial.println(millis() - aaa);
 
   } else {
 
@@ -377,7 +379,7 @@ void loop() {
         m0(sLV);
     }
 
-//        Serial.println(millis() - aaa);
+    //        Serial.println(millis() - aaa);
 
     strip.Show();
 
@@ -631,18 +633,18 @@ void m6() {
       TLP[i] = millis();
     } else {
       if (eLV[i]) {
-        eLV[i] -= 0.075/brC;
+        eLV[i] -= 0.075 / brC;
         if (eLV[i] < 0) eLV[i] = 0;
       }
       if (millis() - TLP[i] < 50 ) LOWPASS[i] += 2;
       else if (millis() - TLP[i] > 1000) {
         LOWPASS[i] -= 10;
         if (LOWPASS[i] < 0) LOWPASS[i] = 0;
-      } 
+      }
     }
   }
 
-//#define DEBUG
+  //#define DEBUG
 
 #ifdef DEBUG
   if (colorMusic[0] || colorMusic[1] || colorMusic[2] || colorMusic[3] || colorMusic[4]) {
@@ -772,7 +774,7 @@ void m4() {
         else if (fht_lin_out[i] < LOWPASS[4]) fht_lin_out[i] = 0;
     */
 
-    //     #define DEBUG_EQ
+    //#define DEBUG_EQ
 
 #ifdef DEBUG_EQ
     if (i < 16) {
@@ -791,18 +793,16 @@ void m4() {
   int pmax = 0;
   HsbColor target;
 
-  //for (int i = FHT_N / 2 - 1; i > 1 ; i--) {
+  //  for (int i = FHT_N / 2 - 1; i > 1 ; i--) {
   for (int i = 0; i < FHT_N / 2; i++) {
     //    if (fht_lin_out[i] > pmax) pmax = fht_lin_out[i];
     int m = round(Map(i, 0, FHT_N / 2 - 1, PCL, PixelCount - 1));
     if (fht_lin_out[i] > LOWP[i]) {
-      float L = Map(fht_lin_out[i], LOWP[i], 40, 0, Br );
-      target = HsbColor( (i - 2) * (360. / (FHT_N / 2)) / 360., 1.0, L);
+      float L = Map(fht_lin_out[i], LOWP[i], 30, 0, Br );
+      target = HsbColor( (i - 3) * (360. / (FHT_N / 2)) / 360., 1.0, L);
       RgbColor color = strip.GetPixelColor(m);
       HsbColor c = color;
-      if (target.B < c.B && target.B > 0) {
-        target.B = Br;
-      }
+      if (target.B < c.B && target.B > 0) target.B = Br;
       color = target;
       strip.SetPixelColor(m, color);
       strip.SetPixelColor(PixelCount - m - 1, color);
