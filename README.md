@@ -9,7 +9,7 @@ Now 13 (7 centered, 3 linear, 2 EQ, and flash) animated effects.
 - ArduinoFFT https://github.com/kosme/arduinoFFT <i>(in old release for ESP8266/ESP32)</i>
 - EncButton library https://github.com/GyverLibs/EncButton
 - Mic on MAX9814 amplifier (or any similar), or any line-input audio signal.
-- EC11 encoder for switch modes, brightness and sensitivity.
+- EC11 encoder for switch modes, brightness and sensitivity (and etc.).
 - Arduino Nano (or any other where the specified libraries work).
 
 <b>Список эффектов:</b>
