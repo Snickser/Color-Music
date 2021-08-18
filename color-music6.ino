@@ -196,7 +196,7 @@ void setup() {
   //  EEPROM.get(0, Mode);
   //  ModeSet(Mode);
 
-  ModeSet(5);
+  ModeSet(7);
 
   /*
     while (1) {
@@ -1013,7 +1013,7 @@ void m7(int n) {
       if (i < PixelCount / 3) {
         if (color.R + color.G + color.B > 2) color.Darken(256 * L);
       }
-      if (i == 3 && color.CalculateBrightness()) color = color.Brighten(255 * Br);
+      if (i == 2 && color.CalculateBrightness()) color = color.Brighten(20);
       strip.SetPixelColor(i - 1, color);
       strip.SetPixelColor(PixelCount - i, color);
     }
