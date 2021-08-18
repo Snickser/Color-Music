@@ -34,4 +34,4 @@ Now 13 (7 centered, 3 linear, 2 EQ, and flash) animated effects.
 4. Изменяет коэффициент увеличения верхнего предела уровня звука (чтоб не зашкаливало, обычно не требуется, на всякий случай).
 5. Изменяет скорость падения пик-маркера.
 
-<iframe width="1280" height="739" src="https://www.youtube.com/embed/ZGHia4QcqCc" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+Пример работы - https://youtu.be/ZGHia4QcqCc
