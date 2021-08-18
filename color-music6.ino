@@ -22,23 +22,24 @@ const int analogInPin = A0;
 
 // LED strip
 #include <NeoPixelBus.h>
-const uint16_t PixelCount = 100;
+const uint16_t PixelCount = 95;
 const uint8_t PixelPin = 9;
-byte pxRatio = 4;     // 1 for 30Led/m, 2 for 60Led/m, 4 for 100L/m, 8 for 144L/m
-byte brC = 5;         // brightnes 1 maximum, 254 minimum (for encoder)
+byte pxRatio = 5;     // 1 for 30Led/m, 2 for 60Led/m, 4 for 100L/m, 8 for 144L/m
+byte brC = 3;         // brightnes 1 maximum, 254 minimum (for encoder)
 float Br = 1. / brC; // HSL Max 0.5/brC = level
-NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
+NeoPixelBus<NeoRgbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
 #define S1 2
 #define S2 3
 #define KEY 4
+#define PWR 5
 #include <EncButton.h>
 EncButton<EB_TICK, S1, S2, KEY> enc;
 
 HsbColor rnd;
 float RB, RB2;
 float bwL;
-byte Nc;
+byte Nc,PCV;
 unsigned long bwD;
 int PCL;
 float PCD;
@@ -55,11 +56,16 @@ float Map(float x, float in_min, float in_max, float out_min, float out_max)
 
 void ModeSet(byte m) {
   timeL = millis();
+  Nc = random(2);
   Mode = m;
-  Nc = random(0, 1);
   pfMin = 0.2;
-  if (PixelCount % 2) PCL = PixelCount / 2 + 1;
-  else PCL = PixelCount / 2;
+  if (PixelCount % 2) {
+    PCL = PixelCount / 2 + 1;
+    PCV = 1; 
+  } else {
+    PCL = PixelCount / 2;
+    PCV = 0;
+  }
   switch (m) {
     case 12:
       Serial.println("Mode 12: dance");
@@ -144,15 +150,12 @@ void setup() {
 
   pinMode(analogInPin, INPUT);
 
-  randomSeed(analogRead(0));
+  randomSeed(analogRead(analogInPin));
 
   //analogReference(INTERNAL);
 
-  pinMode(5, OUTPUT);
-  digitalWrite(5, 1);
-
   pinMode(7, OUTPUT);
-  digitalWrite(7, 0);
+  digitalWrite(7, 1);
 
 #if defined (__AVR_ATmega32U4__) || defined(__AVR_ATmega328P__)
   // жуткая магия, меняем частоту оцифровки до 18 кГц
@@ -178,6 +181,9 @@ void setup() {
   digitalWrite(LED_BUILTIN, 1);
 #endif
 
+  // Encoder
+  pinMode(PWR, OUTPUT);
+  digitalWrite(PWR, 1);
   attachInterrupt(digitalPinToInterrupt(S1), isr, CHANGE);  // D2
   attachInterrupt(digitalPinToInterrupt(S2), isr, CHANGE);  // D3
 
@@ -187,21 +193,21 @@ void setup() {
   ModeSet(5);
 
   /*
-      while (1) {
-        long aaa = millis();
-        for (byte i = 0; i < 100; i++) {
-          float nn = Map(i, 0, 99, 0, 1);
-          float cc = Map(i, 0, 99, 0, 360);
-          //       RgbColor c = HsbColor::LinearBlend<NeoHueBlendClockwiseDirection>(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
-              HsbColor c = HsbColor(cc / 360., 1, Br );
-          //      RgbColor c = RgbColor::LinearBlend(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
-          //      c = colorGamma.Correct(c);
+    while (1) {
+    long aaa = millis();
+    for (byte i = 0; i < 100; i++) {
+    float nn = Map(i, 0, 99, 0, 1);
+    float cc = Map(i, 0, 99, 0, 360);
+    RgbColor c = HsbColor::LinearBlend<NeoHueBlendClockwiseDirection>(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
+    //              HsbColor c = HsbColor(cc / 360., 1, Br );
+    //      RgbColor c = RgbColor::LinearBlend(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
+    //      c = colorGamma.Correct(c);
     //          RgbColor c (64,64,0);
-          strip.SetPixelColor(i, c);
-        }
-        Serial.println(millis() - aaa);
-        strip.Show();
-      }
+    strip.SetPixelColor(i, c);
+    }
+    Serial.println(millis() - aaa);
+    strip.Show();
+    }
   */
 
 }
@@ -310,8 +316,7 @@ void loop() {
         sLV -= 2;
       } else if (sLV > 0 ) {
         sLV--;
-      } else {
-        PCD -= 0.2; //*0.992;
+        if (sLV < PCL * 0.2) PCD -= 0.2; //*0.992;
       }
     }
 
@@ -379,7 +384,7 @@ void loop() {
         m0(sLV);
     }
 
-    //        Serial.println(millis() - aaa);
+    //    Serial.println(millis() - aaa);
 
     strip.Show();
 
@@ -410,12 +415,13 @@ void loop() {
 /////////////////////////////////////////////////////////////////////////////
 
 void meter(byte n, byte c) {
+  blank(1);
   for (byte i = 1; i <= n; i++) {
     if (i % 5 == 0) strip.SetPixelColor(i - 1, HsbColor(0, 1, Br ));
     else strip.SetPixelColor(i - 1, RgbColor(255 * Br));
   }
   strip.Show();
-  delay(300);
+  delay(500);
   EEPROM.put(c, n);
 }
 
@@ -534,10 +540,8 @@ void blank(byte x) {
 }
 
 void marker(int n, float c1, float c2, byte m) {
-
-  float cr = 0.125 * pxRatio;
+  float cr = 0.150 * pxRatio;
   RgbColor target;
-
   if (n > bwL) {
     bwL = n - 1;
     bwD = millis();
@@ -824,12 +828,10 @@ void m4() {
 float RBn;
 float slow;
 void m5(int n, byte m) {
-  Nc = 1;
-
   int j = 0;
   if (m) j = PCL;
-  RBn = 1. / (PCL / (1 + m + pxRatio / 4));
-  int k = n + PCL;
+  RBn = 1. / (n + 1); //(PCL / (1 + m + pxRatio / 6.));
+  int k = n + PCL - PCV;
   RgbColor target;
 
   //  if (n > 1) {
@@ -846,24 +848,22 @@ void m5(int n, byte m) {
   }
   //  }
 
-  float br = Map(n, PCL - j, PixelCount - 2, Br / 4, Br );
-  for (int i = PCL; i < k - 1 ; i++) {
+
+  float br = Map(n, PCL - j, PixelCount - 2, Br / 2, Br );
+  for (int i = PCL-PCV; i < k - 1 ; i++) {
     float cc = RBn * (i - PCL);
     while (RB + cc > 1 || RB - cc < 0) cc--;
     switch (Nc) {
       case 1:
         target = HsbColor(RB + cc, 1, br);
-        strip.SetPixelColor(i - j, target);
-        if (!m) strip.SetPixelColor(PixelCount - i - 1, target);
         break;
       default:
         target = HsbColor(RB - cc, 1, br );
-        strip.SetPixelColor(i - j, target);
-        if (!m) strip.SetPixelColor(PixelCount - i - 1, target);
     }
+    strip.SetPixelColor(i - j, target);
+    if (!m) strip.SetPixelColor(PixelCount - i - 1, target);
   }
   //  }
-
   marker(k - j, 0, 0.67, 1 - m);
 }
 
@@ -950,17 +950,17 @@ void m1(int n) {
 }
 
 void m0(int n) {
-
-  int m = PCL / 5;
-  int p = m / 2;
-  int k = n + PCL;
+  int v = PCL-PCV;
+  int m = v / 5;
+  int p = round(m / 2.);
+  int k = n + v;
   float color[] = {0.33, 0.130, 0.03, 0, 0};
   float c = 0.56;
 
-  if (n > 1) {
-    float L = Map(n, 0, PCL, Br / 4, Br);
-    for (int i = PCL; i < k - 1; i++) {
-      if (i % m == p) c = color[(i - PCL) / m];
+  if (n > 0) {
+    float L = Map(n, 0, v, Br / 4, Br);
+    for (int i = v; i < k; i++) {
+      if ((i - v) % m == p) c = color[(i - v) / m];
       RgbColor res = HsbColor(c, 1, L);
       strip.SetPixelColor(i, res);
       strip.SetPixelColor(PixelCount - i - 1, res);
@@ -1005,8 +1005,8 @@ void m7(int n) {
     float L = Br / (PixelCount / 3);
     for (int i = 1; i <= PixelCount / 2 ; i++) {
       RgbColor color = strip.GetPixelColor(i);
-      if (i < PixelCount / 4) {
-        if (color.R + color.G + color.B > 2) color.Darken(255 * L);
+      if (i < PixelCount / 3) {
+        if (color.R + color.G + color.B > 2) color.Darken(256 * L);
       }
       if (i == 3 && color.CalculateBrightness()) color = color.Brighten(255 * Br);
       strip.SetPixelColor(i - 1, color);
@@ -1022,16 +1022,15 @@ void m7(int n) {
 
 float lastRB;
 void m8(int n, byte m) {
-
-  int k = n + PCL;
+  int k = n + PCL - PCV;
 
   if (millis() - timeF > 12 * 1000 && n < 3 || timeF == 0) {
     timeF = millis();
     lastRB = RB;
     while (abs(lastRB - RB) < 0.125) {
-      RB = random(0, 359) / 360.;
+      RB = random(360) / 360.;
       while (abs(RB - RB2) < 0.25) {
-        RB2 = random(0, 359) / 360.;
+        RB2 = random(360) / 360.;
       }
     }
   }
@@ -1078,7 +1077,7 @@ void m11(int n) {
     RgbColor t1 = HsbColor(RB, 1, L);
     RgbColor t2 = HsbColor(RB, 1, L / 3);
     for (int i = 0; i < PixelCount / 6; i++) {
-      float nn = Map(i, 0, PixelCount / 6 - 1, 0, 1);
+      float nn = Map(i, PixelCount / 6 * 0.25, PixelCount / 6 - 1, 0, 1);
       RgbColor res = RgbColor::LinearBlend(t1, t2, nn);
       strip.SetPixelColor(p + i, res);
       strip.SetPixelColor(p - i - 1 , res);
@@ -1104,7 +1103,7 @@ void m12(int n, int h) {
   m = PixelCount * 0.07;
   L = HsbColor(RB, 1, Map(h, m * 2, PCL - m, 0, Br));
   for (int i = 0; i < m; i++) {
-    float nn = Map(i, 1, m - 1, 0, 0.9);
+    float nn = Map(i, m * 0.2, m - 1, 0, 0.95);
     RgbColor res = RgbColor::LinearBlend(L, 0, nn);
     strip.SetPixelColor(PCL + i, res);
     strip.SetPixelColor(PCL - i - 1, res);
@@ -1114,7 +1113,7 @@ void m12(int n, int h) {
   m = PixelCount * 0.13;
   L = HsbColor(Map(n, 0, PCL - m, 0.9, 0), 1, Br);
   for (int i = 0; i < m; i++) {
-    float nn = Map(i, 1, m - 1, 0, 0.9);
+    float nn = Map(i, m * 0.3, m - 1, 0, 0.95);
     RgbColor res = RgbColor::LinearBlend(L, 0, nn);
     strip.SetPixelColor(k + i, res);
     if (k - i > PCL) {
