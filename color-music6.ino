@@ -1,5 +1,5 @@
 #define LIN_OUT 1
-#define LOG_OUT 1
+//#define LOG_OUT 1
 #define FHT_N 128  //set to 256 point fht
 #include <FHT.h>   //include the library
 int colorMusic[5];
@@ -15,20 +15,21 @@ byte Mode;
 byte cs = 24;        // millis
 float pfMax = 1.08;
 byte maxL = 5;       // levels for m2()
-float modeR = 3;      // minutes
+float modeR = 4;      // cyclical change of modes in minutes
 
 // mic
 const int analogInPin = A0;
 
 // LED strip
 #include <NeoPixelBus.h>
-const uint16_t PixelCount = 95;
+const uint16_t PixelCount = 100;
 const uint8_t PixelPin = 9;
 byte pxRatio = 5;     // 1 for 30Led/m, 2 for 60Led/m, 4 for 100L/m, 8 for 144L/m
-byte brC = 3;         // brightnes 1 maximum, 254 minimum (for encoder)
+byte brC = 2;         // brightnes 1 maximum, 254 minimum (for encoder)
 float Br = 1. / brC; // HSL Max 0.5/brC = level
-NeoPixelBus<NeoRgbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
+NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
+// Encoder
 #define S1 2
 #define S2 3
 #define KEY 4
@@ -36,15 +37,20 @@ NeoPixelBus<NeoRgbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 #include <EncButton.h>
 EncButton<EB_TICK, S1, S2, KEY> enc;
 
+// Some variables
 HsbColor rnd;
 float RB, RB2;
 float bwL;
-byte Nc,PCV;
+byte Nc, PCV;
 unsigned long bwD;
 int PCL;
 float PCD;
 float pfMin;
 unsigned long timeL;
+
+////
+//
+////
 
 float Map(float x, float in_min, float in_max, float out_min, float out_max)
 {
@@ -61,7 +67,7 @@ void ModeSet(byte m) {
   pfMin = 0.2;
   if (PixelCount % 2) {
     PCL = PixelCount / 2 + 1;
-    PCV = 1; 
+    PCV = 1;
   } else {
     PCL = PixelCount / 2;
     PCV = 0;
@@ -215,7 +221,6 @@ void setup() {
 void isr() {
   enc.tick();  // отработка в прерывании
 }
-
 
 int sLV, LV;
 float eLV[5];
@@ -850,7 +855,7 @@ void m5(int n, byte m) {
 
 
   float br = Map(n, PCL - j, PixelCount - 2, Br / 2, Br );
-  for (int i = PCL-PCV; i < k - 1 ; i++) {
+  for (int i = PCL - PCV; i < k - 1 ; i++) {
     float cc = RBn * (i - PCL);
     while (RB + cc > 1 || RB - cc < 0) cc--;
     switch (Nc) {
@@ -950,7 +955,7 @@ void m1(int n) {
 }
 
 void m0(int n) {
-  int v = PCL-PCV;
+  int v = PCL - PCV;
   int m = v / 5;
   int p = round(m / 2.);
   int k = n + v;
