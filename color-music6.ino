@@ -26,7 +26,7 @@ const uint16_t PixelCount = 100;
 const uint8_t PixelPin = 9;
 byte pxRatio = 5;     // 1 for 30Led/m, 2 for 60Led/m, 4 for 100L/m, 8 for 144L/m
 byte brC = 2;         // brightnes 1 maximum, 254 minimum (for encoder)
-float Br = 1. / brC; // HSL Max 0.5/brC = level
+float Br = 1. / brC;  // HSL Max 0.5/brC = level
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
 // Encoder
@@ -161,7 +161,7 @@ void setup() {
   //analogReference(INTERNAL);
 
   pinMode(7, OUTPUT);
-  digitalWrite(7, 1);
+  digitalWrite(7, 0);
 
 #if defined (__AVR_ATmega32U4__) || defined(__AVR_ATmega328P__)
   // жуткая магия, меняем частоту оцифровки до 18 кГц
@@ -196,7 +196,7 @@ void setup() {
   //  EEPROM.get(0, Mode);
   //  ModeSet(Mode);
 
-  ModeSet(7);
+  ModeSet(6);
 
   /*
     while (1) {
@@ -728,6 +728,10 @@ void m6() {
     n = map(4, 1, 9, 0, PCL - m);
     target = HsbColor(0.33f, 1.0f, eLV[1]);
     strip.SetPixelColor(n + p + cr, target);
+    if (cn > 7) {
+      cr++;
+      strip.SetPixelColor(n + p + cr, target);
+    }
 
     n = Map(5, 1, 9, 0, PCL - m);
     target = HsbColor(0.66f, 1.0f, eLV[0]);
@@ -740,11 +744,15 @@ void m6() {
     n = Map(6, 1, 9, 0, PCL - m);
     target = HsbColor(0.33f, 1.0f, eLV[1]);
     strip.SetPixelColor(n + p + cr, target);
+    if (cn > 7) {
+      cr++;
+      strip.SetPixelColor(n + p + cr, target);
+    }
 
     n = Map(7, 1, 9, 0, PCL - m);
-    target = HsbColor(0.125, 1.0f, eLV[2] / 1.4);
+    target = HsbColor(0.125, 1, eLV[2] / 1.4);
     strip.SetPixelColor(n + p + cr , target);
-    if (cn >= 6) {
+    if (cn > 5) {
       cr++;
       strip.SetPixelColor(n + p + cr, target);
     }
@@ -752,7 +760,7 @@ void m6() {
     n = Map(8, 1, 9, 0, PCL - m );
     target = HsbColor(0, 1.0f, eLV[3]);
     strip.SetPixelColor(n + p + cr, target);
-    if (cn >= 4) {
+    if (cn > 3) {
       cr++;
       strip.SetPixelColor(n + p + cr, target);
     }
@@ -760,7 +768,7 @@ void m6() {
     n = Map(9, 1, 9, 0, PCL - m );
     target = HsbColor(0.77, 1.0f, eLV[4]);
     strip.SetPixelColor(n + p + cr, target);
-    if (cn >= 2) {
+    if (cn > 1) {
       cr++;
       strip.SetPixelColor(n + p + cr, target);
     }
@@ -1096,7 +1104,7 @@ int dd = 10;
 byte pp;
 void m12(int n, int h) {
 
-  int k = n + PCL;
+  int k = n + PCL - PCV;
   int m;
   RgbColor L, L2;
 
@@ -1121,7 +1129,7 @@ void m12(int n, int h) {
     float nn = Map(i, m * 0.3, m - 1, 0, 0.95);
     RgbColor res = RgbColor::LinearBlend(L, 0, nn);
     strip.SetPixelColor(k + i, res);
-    if (k - i > PCL) {
+    if (k - i > PCL - PCV ) {
       strip.SetPixelColor(PixelCount - k + i, res);
       strip.SetPixelColor(k - i - 1, res);
     }
