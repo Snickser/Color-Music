@@ -12,7 +12,7 @@ byte Mode;
 
 // #define DEBUG
 
-byte cs = 24;        // millis
+byte cs = 23;        // millis
 float pfMax = 1.08;
 byte maxL = 5;       // levels for m2()
 float modeR = 4;      // cyclical change of modes in minutes
@@ -25,7 +25,7 @@ const int analogInPin = A0;
 const uint16_t PixelCount = 100;
 const uint8_t PixelPin = 9;
 byte pxRatio = 5;     // 1 for 30Led/m, 2 for 60Led/m, 4 for 100L/m, 8 for 144L/m
-byte brC = 2;         // brightnes 1 maximum, 254 minimum (for encoder)
+byte brC = 3;         // brightnes 1 maximum, 254 minimum (for encoder)
 float Br = 1. / brC;  // HSL Max 0.5/brC = level
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 
@@ -161,7 +161,7 @@ void setup() {
   //analogReference(INTERNAL);
 
   pinMode(7, OUTPUT);
-  digitalWrite(7, 0);
+  digitalWrite(7, 1);
 
 #if defined (__AVR_ATmega32U4__) || defined(__AVR_ATmega328P__)
   // жуткая магия, меняем частоту оцифровки до 18 кГц
@@ -196,7 +196,7 @@ void setup() {
   //  EEPROM.get(0, Mode);
   //  ModeSet(Mode);
 
-  ModeSet(6);
+  ModeSet(5);
 
   /*
     while (1) {
@@ -843,7 +843,7 @@ float slow;
 void m5(int n, byte m) {
   int j = 0;
   if (m) j = PCL;
-  RBn = 1. / (n + 1); //(PCL / (1 + m + pxRatio / 6.));
+  RBn = 1. / (PCL/1.4) ; //(PCL / (1 + m + pxRatio / 6.));
   int k = n + PCL - PCV;
   RgbColor target;
 
@@ -862,7 +862,7 @@ void m5(int n, byte m) {
   //  }
 
 
-  float br = Map(n, PCL - j, PixelCount - 2, Br / 2, Br );
+  float br = Map(n, 0, PCL, Br / 4, Br );
   for (int i = PCL - PCV; i < k - 1 ; i++) {
     float cc = RBn * (i - PCL);
     while (RB + cc > 1 || RB - cc < 0) cc--;
@@ -1051,7 +1051,7 @@ void m8(int n, byte m) {
   RgbColor res;
   switch (m) {
     case 1:
-      L = Map(n, 2, PCL, Br / 2, Br );
+      L = Map(n, 2, PCL, Br / 4, Br );
       for (int i = PCL - 1; i < k - 1; i++) {
         nn = Map(i - n * 0.07, PCL, k - 4, 0, 1);
         res = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(HsbColor(RB, 1, L ), HsbColor(RB2, 1, L ), nn);
@@ -1086,7 +1086,7 @@ void m11(int n) {
     while ( abs(lastP - p) < PixelCount / 7 * 2) p = random(PixelCount / 12, PixelCount - PixelCount / 12);
     lastP = p;
     RB = Map(n, 0, PCL, 1, 0);
-    float L = Map(n, PCL * 0.10, PCL, Br / 3, Br);
+    float L = Map(n, PCL * 0.10, PCL, Br / 4, Br);
     RgbColor t1 = HsbColor(RB, 1, L);
     RgbColor t2 = HsbColor(RB, 1, L / 3);
     for (int i = 0; i < PixelCount / 6; i++) {
