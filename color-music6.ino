@@ -553,9 +553,19 @@ void marker(int n, float c1, float c2, byte m) {
   } else {
     if (millis() - bwD > 700) {
       bwL -= cr;
-      target = HsbColor(c2, 1, Br / 5 );
+      target = HsbColor(c2, 1, Br / 2 );
+//      target = target.Dim(126);
       strip.SetPixelColor(bwL + 1, target);
       if (m) strip.SetPixelColor(PixelCount - bwL - 1 - cr, target);
+      //target = HsbColor(c2, 1, Br / 4 );
+      target = target.Dim(126);
+      target = target.Dim(63);
+      strip.SetPixelColor(bwL + 2, target);
+      if (m) strip.SetPixelColor(PixelCount - bwL - 2 - cr, target);
+//      target = target.Brighten(63);
+//      target = target.Brighten(126);
+//      target = target.Brighten(126);
+//      Serial.println(target.B);
     }
   }
   target = HsbColor(c2, 1, Br );
@@ -718,7 +728,7 @@ void m6() {
     }
 
     n = map(3, 1, 9, 0, PCL - m);
-    target = HsbColor(0.125, 1, eLV[2] / 1.4);
+    target = HsbColor(0.125, 1, eLV[2] / 1.3);
     strip.SetPixelColor(n + p + cr, target);
     if (cn > 5) {
       cr++;
@@ -750,7 +760,7 @@ void m6() {
     }
 
     n = Map(7, 1, 9, 0, PCL - m);
-    target = HsbColor(0.125, 1, eLV[2] / 1.4);
+    target = HsbColor(0.125, 1, eLV[2] / 1.3);
     strip.SetPixelColor(n + p + cr , target);
     if (cn > 5) {
       cr++;
@@ -843,7 +853,7 @@ float slow;
 void m5(int n, byte m) {
   int j = 0;
   if (m) j = PCL;
-  RBn = 1. / (PCL/1.4) ; //(PCL / (1 + m + pxRatio / 6.));
+  RBn = 1. / (PCL / 1.4) ; //(PCL / (1 + m + pxRatio / 6.));
   int k = n + PCL - PCV;
   RgbColor target;
 
