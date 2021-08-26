@@ -10,7 +10,7 @@ unsigned long TLP[5];
 #include <EEPROM.h>
 byte Mode;
 
-// #define DEBUG
+//#define DEBUG
 
 byte cs = 23;        // millis
 float pfMax = 1.08;
@@ -21,24 +21,22 @@ float modeR = 4;      // cyclical change of modes in minutes
 const int analogInPin = A0;
 
 //#define PROD
+
 // LED strip
 #include <NeoPixelBus.h>
 const uint8_t PixelPin = 9;
 byte pxRatio = 5;     // 1 for 30Led/m, 2 for 60Led/m, 4 for 100L/m, 8 for 144L/m
-
 #ifdef PROD
 const uint16_t PixelCount = 80;
 #else
 const uint16_t PixelCount = 100;
 #endif
-
 #ifdef PROD
-byte brC = 2;         // brightnes 1 maximum, 254 minimum (for encoder)
+byte brC = 3;         // brightnes 1 maximum, 10 minimum (for encoder)
 #else
-byte brC = 3;         // brightnes 1 maximum, 254 minimum (for encoder)
+byte brC = 6;         // brightnes 1 maximum, 10 minimum (for encoder)
 #endif
-float Br = 1. / brC;  // HSL Max 0.5/brC = level
-
+float Br; // HSL Max 0.5/brC = level
 #ifdef PROD
 NeoPixelBus<NeoRgbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
 #else
@@ -65,7 +63,7 @@ float pfMin;
 unsigned long timeL;
 
 ////
-//
+// <
 ////
 
 float Map(float x, float in_min, float in_max, float out_min, float out_max)
@@ -74,6 +72,13 @@ float Map(float x, float in_min, float in_max, float out_min, float out_max)
   if (x > in_max) return out_max;
   if (x < in_min) return out_min;
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+float Brightness(byte b) {
+  float x = Map(b, 1, 9, 1, 0);
+  if (x == 0) x = 1. / b;
+  //  Serial.println(x, 3);
+  return x;
 }
 
 void ModeSet(byte m) {
@@ -177,7 +182,7 @@ void setup() {
   //analogReference(INTERNAL);
 
   pinMode(7, OUTPUT);
-  digitalWrite(7, 0);
+  digitalWrite(7, 1);
 
 #if defined (__AVR_ATmega32U4__) || defined(__AVR_ATmega328P__)
   // жуткая магия, меняем частоту оцифровки до 18 кГц
@@ -212,16 +217,17 @@ void setup() {
   //  EEPROM.get(0, Mode);
   //  ModeSet(Mode);
 
-  ModeSet(12);
+  Br = Brightness(brC);
+  ModeSet(8);
 
   /*
     while (1) {
     long aaa = millis();
     for (byte i = 0; i < 100; i++) {
     float nn = Map(i, 0, 99, 0, 1);
-    float cc = Map(i, 0, 99, 0, 360);
     RgbColor c = HsbColor::LinearBlend<NeoHueBlendClockwiseDirection>(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
-    //              HsbColor c = HsbColor(cc / 360., 1, Br );
+    //    float cc = Map(i, 0, 99, 0, 360);
+    //      HsbColor c = HsbColor(cc / 360., 1, Br );
     //      RgbColor c = RgbColor::LinearBlend(HsbColor(0, 1, Br ), HsbColor(1, 1, Br ), nn);
     //      c = colorGamma.Correct(c);
     //          RgbColor c (64,64,0);
@@ -258,22 +264,22 @@ void loop() {
   enc.tick();
   encoder();
 
-  int v_max = 0;
-  int v_min = 1024;
-  int pcur;
-
   unsigned long tNow = millis();
   unsigned long tEnd = tNow + cs ;
 
+  unsigned int v_max = 0;
+  unsigned int v_min = 1024;
+  unsigned int pcur;
+
   if (Mode == 4) {
 
-    long aaa = millis();
+    //    long aaa = millis();
     m4();
     //    Serial.println(millis() - aaa);
 
   } else if (Mode == 6) {
 
-    long aaa = millis();
+    //    long aaa = millis();
     m6();
     //        Serial.println(millis() - aaa);
 
@@ -438,8 +444,8 @@ void loop() {
 void meter(byte n, byte c) {
   blank(1);
   for (byte i = 1; i <= n; i++) {
-    if (i % 5 == 0) strip.SetPixelColor(i - 1, HsbColor(0, 1, Br ));
-    else strip.SetPixelColor(i - 1, RgbColor(255 * Br));
+    if (i % 5 == 0) strip.SetPixelColor(i - 1, RgbColor(128, 0, 0));
+    else strip.SetPixelColor(i - 1, RgbColor(128));
   }
   strip.Show();
   delay(500);
@@ -464,7 +470,7 @@ void encoder() {
       case 1:
         brC--;
         if (brC < 1) brC = 1;
-        Br = 1.0 / brC;
+        Br = Brightness(brC);
         meter(brC, 1);
         break;
       default:
@@ -488,7 +494,7 @@ void encoder() {
         break;
       case 1:
         brC++;
-        Br = 1.0 / brC;
+        Br = Brightness(brC);
         meter(brC, 1);
         break;
       default:
@@ -850,7 +856,7 @@ void m4() {
       strip.SetPixelColor(PixelCount - m - 1, color);
     } else {
       RgbColor color = strip.GetPixelColor(m);
-      color.Darken(20 / brC);
+      color.Darken(24 / brC);
       strip.SetPixelColor(m, color);
       strip.SetPixelColor(PixelCount - m - 1, color);
     }
@@ -1068,7 +1074,7 @@ void m8(int n, byte m) {
     while (abs(lastRB - RB) < 0.125) {
       RB = random(360) / 360.;
       while (abs(RB - RB2) < 0.25) {
-        RB2 = random(360) / 360.;
+        RB2 = random(100) / 100.;
       }
     }
   }
@@ -1100,7 +1106,7 @@ void m8(int n, byte m) {
 
 int lastP;
 void m11(int n) {
-  int f = round(25. / brC);
+  int f = round(25 * Br);
   for (int i = 0; i < PixelCount; i++) {
     RgbColor color = strip.GetPixelColor(i);
     color.Darken(f);
@@ -1149,7 +1155,7 @@ void m12(int n, int h) {
 
   //level
   m = PixelCount * 0.13;
-  L = HsbColor(Map(n, 0, PCL - m, 0.9, 0), 1, Map(n, 0, PCL - m, Br/4, Br));
+  L = HsbColor(Map(n, 0, PCL - m, 0.9, 0), 1, Map(n, 0, PCL - m, Br / 4, Br));
   for (int i = 0; i < m; i++) {
     float nn = Map(i, m * 0.3, m - 1, 0, 0.95);
     RgbColor res = RgbColor::LinearBlend(L, 0, nn);
