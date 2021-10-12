@@ -12,7 +12,9 @@ byte Mode;
 
 //#define DEBUG
 
-byte cs = 23;        // millis
+#define PROD
+
+byte cs = 24;        // millis
 float pfMax = 1.08;
 byte maxL = 5;       // levels for m2()
 float modeR = 4;      // cyclical change of modes in minutes
@@ -20,8 +22,6 @@ float modeR = 4;      // cyclical change of modes in minutes
 // mic
 #define AMP 7
 #define analogInPin A0
-
-//#define PROD
 
 // LED strip
 #include <NeoPixelBus.h>
@@ -62,6 +62,7 @@ int PCL;
 float PCD;
 float pfMin;
 unsigned long timeL;
+byte epr;
 
 ////
 // <
@@ -171,6 +172,7 @@ void ModeSet(byte m) {
       Mode = 0;
       pfMin = 0.3;
   }
+  EEPROM.put(0, Mode);
 }
 
 void setup() {
@@ -181,9 +183,6 @@ void setup() {
   randomSeed(analogRead(analogInPin));
 
   //analogReference(INTERNAL);
-
-  pinMode(AMP, OUTPUT);
-  digitalWrite(AMP, 0);
 
 #if defined (__AVR_ATmega32U4__) || defined(__AVR_ATmega328P__)
   // жуткая магия, меняем частоту оцифровки до 18 кГц
@@ -215,11 +214,22 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(S1), isr, CHANGE);  // D2
   attachInterrupt(digitalPinToInterrupt(S2), isr, CHANGE);  // D3
 
-  //  EEPROM.get(0, Mode);
-  //  ModeSet(Mode);
+#ifdef PROD
+  EEPROM.get(5, epr);
+  pinMode(AMP, OUTPUT);
+  digitalWrite(AMP, epr);
+  EEPROM.get(4, pxRatio);
+  EEPROM.get(2, cs);
+  EEPROM.get(1, brC);
+  EEPROM.get(0, Mode);
+  ModeSet(Mode);
+#else
+
+  ModeSet(3);
+
+#endif
 
   Br = Brightness(brC);
-  ModeSet(6);
 
   /*
     while (1) {
@@ -254,10 +264,10 @@ float pavg;
 float plast;
 unsigned long timeB;
 unsigned long timeF;
-byte bb;
-byte bMode;
 float Lmin = 1. / 255.;
 float Cmin = 1. / 360.;
+byte bb;
+byte bMode;
 
 void loop() {
 
@@ -919,11 +929,13 @@ void m3(int n) {
   if (n > 2) {
     switch (Nc) {
       case 1:
-        RB -= 0.0003;
+        if (RB < 0.01 || RB > 0.99) RB -= 0.00002;
+        else RB -= 0.0003;
         if (RB < 0) RB = (RB + 1.) - Cmin;
         break;
       default:
-        RB += 0.0003;
+        if (RB < 0.01 || RB > 0.99) RB += 0.00002;
+        else RB += 0.0003;
         if (RB > 1) RB = (RB - 1.) + Cmin;
     }
   }
