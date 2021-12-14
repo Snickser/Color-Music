@@ -11,7 +11,6 @@ unsigned long TLP[5];
 byte Mode;
 
 //#define DEBUG
-
 #define PROD
 
 byte cs = 24;        // millis
@@ -96,6 +95,12 @@ void ModeSet(byte m) {
     PCV = 0;
   }
   switch (m) {
+    case 13:
+      Serial.println("Mode 13: quad + random");
+      //      EEPROM.put(0, 9);
+      PCL /= 2;
+      PCD = PCL * 2;
+      break;
     case 12:
       Serial.println("Mode 12: dance");
       //      EEPROM.put(0, 12);
@@ -147,7 +152,7 @@ void ModeSet(byte m) {
       blank(1);
       break;
     case 3:
-      Serial.println("Mode 3: linear + random");
+      Serial.println("Mode 3: linear + cycle");
       //      EEPROM.put(0, 4);
       PCL = PixelCount;
       PCD = PCL * 0.5;
@@ -172,7 +177,7 @@ void ModeSet(byte m) {
       Mode = 0;
       pfMin = 0.3;
   }
-  EEPROM.put(0, Mode);
+  //  EEPROM.put(0, Mode);
 }
 
 void setup() {
@@ -225,7 +230,7 @@ void setup() {
   ModeSet(Mode);
 #else
 
-  ModeSet(3);
+  ModeSet(13);
 
 #endif
 
@@ -379,6 +384,10 @@ void loop() {
     long aaa = millis();
 
     switch (Mode) {
+      case 13:
+        blank(0);
+        m8(sLV, Nc, 2);
+        break;
       case 12:
         blank(0);
         m12(sLV, LV);
@@ -388,7 +397,7 @@ void loop() {
         break;
       case 10:
         blank(0);
-        m8(sLV, 1);
+        m8(sLV, 1, 1);
         break;
       case 9:
         blank(0);
@@ -396,7 +405,7 @@ void loop() {
         break;
       case 8:
         blank(0);
-        m8(sLV, 0);
+        m8(sLV, 0, 1);
         break;
       case 7:
         m7(sLV, LV);
@@ -585,30 +594,34 @@ void blank(byte x) {
 }
 
 void marker(int n, float c1, float c2, byte m) {
+  //  n = 1;
   float cr = 0.150 * pxRatio;
   RgbColor target;
   if (n > bwL) {
     bwL = n - 1;
     bwD = millis();
   } else {
-    if (millis() - bwD > 700) {
+    if (millis() - bwD > 700 && m < 2) {
       bwL -= cr;
       target = HsbColor(c2, 1, Br / 3 );
       strip.SetPixelColor(bwL + 1, target);
       if (m) strip.SetPixelColor(PixelCount - bwL - 1 - cr, target);
       target = target.Dim(63);
-      //target = HsbColor(c2, 1, Br / 5 );
       strip.SetPixelColor(bwL + 2, target);
       if (m) strip.SetPixelColor(PixelCount - bwL - 2 - cr, target);
     }
   }
   target = HsbColor(c2, 1, Br );
-  strip.SetPixelColor(bwL, target);
-  if (m) strip.SetPixelColor(PixelCount - bwL - cr, target);
+  if (m < 2) strip.SetPixelColor(bwL, target);
+  if (m == 1) strip.SetPixelColor(PixelCount - bwL - cr, target);
 
   target = HsbColor(c1, 1, Br * 2 );
   strip.SetPixelColor(n - 1, target);
   if (m) strip.SetPixelColor(PixelCount - n, target);
+  if (m == 2) {
+    strip.SetPixelColor(PCL * 2 + n - 1, target);
+    strip.SetPixelColor(PCL * 2 - n, target);
+  }
 }
 
 
@@ -925,7 +938,6 @@ void m5(int n, byte m) {
 }
 
 void m3(int n) {
-
   if (n > 2) {
     switch (Nc) {
       case 1:
@@ -1086,7 +1098,7 @@ void m7(int m, int n) {
 }
 
 float lastRB;
-void m8(int n, byte m) {
+void m8(int n, byte m, byte q) {
   int k = n + PCL - PCV;
 
   if (millis() - timeF > 12 * 1000 && n < 3 || timeF == 0) {
@@ -1109,8 +1121,12 @@ void m8(int n, byte m) {
         res = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(HsbColor(RB, 1, L ), HsbColor(RB2, 1, L ), nn);
         strip.SetPixelColor(i, res);
         strip.SetPixelColor(PixelCount - i - 1, res);
+        if (q) {
+          strip.SetPixelColor(i + PCL * 2, res);
+          strip.SetPixelColor(PCL * 2 - i - 1, res);
+        }
       }
-      marker(k, RB2 - 0.5, RB, 1);
+      marker(k, RB2 - 0.5, RB, q);
       break;
     default:
       for (int i = PCL - 1; i < k - 1; i++) {
@@ -1119,9 +1135,12 @@ void m8(int n, byte m) {
         res = HsbColor(RB, nn, L );
         strip.SetPixelColor(i, res);
         strip.SetPixelColor(PixelCount - i - 1, res);
-        //    Serial.println(bL, 5);
+        if (q) {
+          strip.SetPixelColor(i + PCL * 2, res);
+          strip.SetPixelColor(PCL * 2 - i - 1, res);
+        }
       }
-      marker(k, RB - 0.5, RB, 1);
+      marker(k, RB - 0.5, RB, q);
   }
 }
 
