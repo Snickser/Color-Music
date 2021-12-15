@@ -13,10 +13,11 @@ byte Mode;
 //#define DEBUG
 //#define PROD
 
-byte cs = 24;        // millis
-float pfMax = 1.08;
+byte cs = 25;        // millis
+float modeR = 4;     // cyclical change of modes in minutes
+
 byte maxL = 5;       // levels for m2()
-float modeR = 4;      // cyclical change of modes in minutes
+float pfMax = 1.08;
 
 // mic
 #define AMP 7
@@ -62,6 +63,7 @@ float PCD;
 float pfMin;
 unsigned long timeL;
 byte epr;
+byte Pdm;
 
 ////
 // <
@@ -96,89 +98,73 @@ void ModeSet(byte m) {
   }
   switch (m) {
     case 14:
-      Serial.println("Mode 14: quad + rainbow");
-      //      EEPROM.put(0, 6);
-      PCL /= 2;
-      PCD = PCL * 2;
+      Serial.println("Mode 14: center + cycle");
+      PCD = PCL * 1.0;
       break;
     case 13:
-      Serial.println("Mode 13: quad + random");
-      //      EEPROM.put(0, 9);
+      Serial.println("Mode 13: quad + random2");
       PCL /= 2;
-      PCD = PCL * 2;
+      PCD = PCL * 2.0;
       break;
     case 12:
       Serial.println("Mode 12: dance");
-      //      EEPROM.put(0, 12);
       PCD = PCL * 1.0;
       break;
     case 11:
       Serial.println("Mode 11: flash");
-      //      EEPROM.put(0, 12);
       PCL = 15; // level, not pixels
       PCD = PCL * 1.0;
       break;
     case 10:
       Serial.println("Mode 10: center + blend");
-      //      EEPROM.put(0, 11);
       PCD = PCL * 1.5;
       break;
     case 9:
       Serial.println("Mode 9: linear + rainbow");
-      //      EEPROM.put(0, 10);
       PCL = PixelCount;
       PCD = PCL * 0.5;
       break;
     case 8:
       Serial.println("Mode 8: center + random");
-      //      EEPROM.put(0, 9);
       PCD = PCL * 1.5;
       break;
     case 7:
       Serial.println("Mode 7: flow");
-      //      EEPROM.put(0, 8);
       PCL = 15; // devider, not pixels
       PCD = 1;
       pfMin = 0.1;
       break;
     case 6:
       Serial.println("Mode 6: freq five");
-      //      EEPROM.put(0, 7);
       autoLowPass(2);
       break;
     case 5:
       Serial.println("Mode 5: center + rainbow");
-      //      EEPROM.put(0, 6);
       PCD = PCL * 1.0;
       break;
     case 4:
       Serial.println("Mode 4: freq more");
-      //      EEPROM.put(0, 5);
       autoLowPass(1);
       blank(1);
       break;
     case 3:
       Serial.println("Mode 3: linear + cycle");
-      //      EEPROM.put(0, 4);
       PCL = PixelCount;
       PCD = PCL * 1;
       break;
     case 2:
       Serial.println("Mode 2: center 3");
-      //      EEPROM.put(0, 3);
       PCL = 3 * maxL ;
       PCD = PCL * 0.5;
       pfMin = 0.02;
       break;
     case 1:
       Serial.println("Mode 1: linear");
-      //     EEPROM.put(0, 2);
       PCL = PixelCount;
       PCD = PCL * 0.5;
       break;
     default:
       Serial.println("Mode 0: center");
-      //     EEPROM.put(0, 1);
       PCD = PCL * 2.0;
       Mode = 0;
       pfMin = 0.3;
@@ -236,7 +222,7 @@ void setup() {
   ModeSet(Mode);
 #else
 
-  ModeSet(14);
+  ModeSet(8);
 
 #endif
 
@@ -359,9 +345,9 @@ void loop() {
     if (LV > sLV) {
       sLV = LV;
     } else {
-      if (sLV > PCL * 0.4 && sLV > 30) {
+      if (sLV > PCL * 0.5 && sLV > 30) {
         sLV -= 3;
-      } else if (sLV > PCL * 0.3 || sLV > 10) {
+      } else if (sLV > PCL * 0.4 || sLV > 10) {
         sLV -= 2;
       } else if (sLV > 0 ) {
         sLV--;
@@ -392,7 +378,7 @@ void loop() {
     switch (Mode) {
       case 14:
         blank(0);
-        m5(sLV, 0, 2);
+        m3(sLV, 1);
         break;
       case 13:
         blank(0);
@@ -411,7 +397,7 @@ void loop() {
         break;
       case 9:
         blank(0);
-        m5(sLV, 1, 0);
+        m5(sLV, 1);
         break;
       case 8:
         blank(0);
@@ -422,11 +408,11 @@ void loop() {
         break;
       case 5:
         blank(0);
-        m5(sLV, 0, 1);
+        m5(sLV, 0);
         break;
       case 3:
         blank(0);
-        m3(sLV);
+        m3(sLV, 0);
         break;
       case 2:
         blank(0);
@@ -474,11 +460,12 @@ void loop() {
 void meter(byte n, byte c) {
   blank(1);
   for (byte i = 1; i <= n; i++) {
-    if (i % 5 == 0) strip.SetPixelColor(i - 1, RgbColor(128, 0, 0));
+    if (i % 10 == 0) strip.SetPixelColor(i - 1, RgbColor(128, 0, 0));
+    else if (i % 5 == 0) strip.SetPixelColor(i - 1, RgbColor(0, 0, 128));
     else strip.SetPixelColor(i - 1, RgbColor(128));
   }
   strip.Show();
-  delay(500);
+  delay(700);
   EEPROM.put(c, n);
 }
 
@@ -907,7 +894,7 @@ void m4() {
 
 float RBn;
 float slow;
-void m5(int n, byte m, byte q) {
+void m5(int n, byte m) {
   int j = 0;
   if (m) j = PCL;
   RBn = 1. / (PCL / 1.4) ; //(PCL / (1 + m + pxRatio / 6.));
@@ -942,26 +929,23 @@ void m5(int n, byte m, byte q) {
     }
     strip.SetPixelColor(i - j, target);
     if (!m) strip.SetPixelColor(PixelCount - i - 1, target);
-    if (q == 2) {
-      strip.SetPixelColor(i - j + PCL * 2, target);
-      strip.SetPixelColor(PCL * 2 - i - 1, target);
-    }
   }
   //  }
-  marker(k - j, 0, 0.67, q);
+  marker(k - j, 0, 0.67, 1 - m);
 }
 
-void m3(int n) {
+void m3(int n, byte q) {
+  int j = q * PCL;
   if (n > 2) {
     switch (Nc) {
       case 1:
-        if (RB < 0.01 || RB > 0.99) RB -= 0.00002;
-        else RB -= 0.0003;
+        if (RB < 0.01 || RB > 0.99) RB -= 0.00002 * (pxRatio * 1.3 * q + 1);
+        else RB -= 0.0003 * (pxRatio * q + 1);
         if (RB < 0) RB = (RB + 1.) - Cmin;
         break;
       default:
-        if (RB < 0.01 || RB > 0.99) RB += 0.00002;
-        else RB += 0.0003;
+        if (RB < 0.01 || RB > 0.99) RB += 0.00002 * (pxRatio * 1.3 * q + 1);
+        else RB += 0.0003 * (pxRatio * q + 1);
         if (RB > 1) RB = (RB - 1.) + Cmin;
     }
   }
@@ -970,9 +954,12 @@ void m3(int n) {
   for (int i = 0; i < n; i++) {
     float nn = Map(i - n * 0.6, 0, PCL, 0, 1);
     RgbColor res = RgbColor::LinearBlend(color, 25, nn);
-    strip.SetPixelColor(i, res);
+    strip.SetPixelColor(i + j, res);
+    if (q) {
+      strip.SetPixelColor(j - i, res);
+    }
   }
-  marker(n, 0, RB + 0.5, 0);
+  marker(n + j, 0, RB + 0.5, q);
 }
 
 void m2(int n) {
@@ -1009,6 +996,7 @@ void m2(int n) {
     for (int i = 0; i < m; i++) {
       strip.SetPixelColor(i, target);
     }
+    //    if (q == 2) target = HsbColor(0.85, 1.f, L / 2. );
     for (int i = m * 4; i < m * 5; i++) {
       strip.SetPixelColor(i, target);
     }
@@ -1020,6 +1008,13 @@ void m2(int n) {
       strip.SetPixelColor(i, target);
     }
   }
+  /*  if (q==2) {
+      for (int i = m * 5 - 1; i >= 0; i--) {
+        RgbColor color = strip.GetPixelColor(i);
+        strip.SetPixelColor(PixelCount - i - 1, color);
+      }
+    }
+  */
 }
 
 void m1(int n) {
@@ -1115,13 +1110,13 @@ float lastRB;
 void m8(int n, byte m, byte q) {
   int k = n + PCL - PCV;
 
-  if (millis() - timeF > 12 * 1000 && n < 3 || timeF == 0) {
+  if (millis() - timeF > 12 * 1000 && n < 3 || timeF == 0 || millis() - timeF > 90 * 1000) {
     timeF = millis();
     lastRB = RB;
     while (abs(lastRB - RB) < 0.125) {
       RB = random(360) / 360.;
       while (abs(RB - RB2) < 0.25) {
-        RB2 = random(100) / 100.;
+        RB2 = random(360) / 360.;
       }
     }
   }
@@ -1144,8 +1139,8 @@ void m8(int n, byte m, byte q) {
       break;
     default:
       for (int i = PCL - 1; i < k - 1; i++) {
-        L = Map(i - n * 0.3, PCL, k - 2, Br, Br / 4 );
-        nn = Map(i - n * 0.3, PCL, k - 2, 1, 0);
+        L = Map(i - n * 0.4, PCL, k - 2, Br, Br / 4 );
+        nn = Map(i - n * 0.4, PCL, k - 2, 1, 0);
         res = HsbColor(RB, nn, L );
         strip.SetPixelColor(i, res);
         strip.SetPixelColor(PixelCount - i - 1, res);
@@ -1196,7 +1191,7 @@ void m12(int n, int h) {
   RgbColor L, L2;
 
   if (n == 0 || n > PCL * 0.95) {
-    RB = random(100) / 100.;
+    RB = random(360) / 360.;
   }
 
   //center
