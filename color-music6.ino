@@ -222,7 +222,7 @@ void setup() {
   ModeSet(Mode);
 #else
 
-  ModeSet(8);
+  ModeSet(13);
 
 #endif
 
@@ -1110,7 +1110,7 @@ float lastRB;
 void m8(int n, byte m, byte q) {
   int k = n + PCL - PCV;
 
-  if (millis() - timeF > 12 * 1000 && n < 3 || timeF == 0 || millis() - timeF > 90 * 1000) {
+  if (millis() - timeF > 12 * 1000 && n < 3 || timeF == 0 || millis() - timeF > 100000) {
     timeF = millis();
     lastRB = RB;
     while (abs(lastRB - RB) < 0.125) {
@@ -1127,7 +1127,7 @@ void m8(int n, byte m, byte q) {
       L = Map(n, 2, PCL, Br / 4, Br );
       for (int i = PCL - 1; i < k - 1; i++) {
         nn = Map(i - n * 0.07, PCL, k - 4, 0, 1);
-        res = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(HsbColor(RB, 1, L ), HsbColor(RB2, 1, L ), nn);
+        res = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(HsbColor(RB, 0.9, L ), HsbColor(RB2, 1, L ), nn);
         strip.SetPixelColor(i, res);
         strip.SetPixelColor(PixelCount - i - 1, res);
         if (q == 2) {
