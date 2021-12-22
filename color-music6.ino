@@ -11,10 +11,10 @@ unsigned long TLP[5];
 byte Mode;
 
 //#define DEBUG
-//#define PROD
+#define PROD
 
 byte cs = 25;        // millis
-float modeR = 4;     // cyclical change of modes in minutes
+float modeR = 3;     // cyclical change of modes in minutes
 
 byte maxL = 5;       // levels for m2()
 float pfMax = 1.08;
@@ -87,7 +87,7 @@ float Brightness(byte b) {
 void ModeSet(byte m) {
   timeL = millis();
   Nc = random(2);
-  Nq = random(2, 4);
+  Nq = random(1, 6);
   Mode = m;
   pfMin = 0.2;
   if (PixelCount % 2) {
@@ -99,14 +99,18 @@ void ModeSet(byte m) {
   }
   switch (m) {
     case 14:
-      Serial.println("Mode 14: center + cycle");
-      PCD = PCL * 1.5;
+      Serial.println("Mode 14: quad + cycle");
+      PCL /= Nq;
+      PCD = PCL * 2.0;
       break;
     case 13:
-      Serial.println("Mode 13: quad + random2");
-      PCL = PCL / Nq;
-      if (Nq > 2) PCL++;
-      PCD = PCL * 1.5;
+      Serial.println("Mode 13: quad + rand2");
+      if (Nq == 1) Nq = 2;
+      PCL /= Nq;
+      if (Nq > 3) {
+        Nc = 0;
+      }
+      PCD = PCL * 2.0;
       break;
     case 12:
       Serial.println("Mode 12: dance");
@@ -114,7 +118,7 @@ void ModeSet(byte m) {
       break;
     case 11:
       Serial.println("Mode 11: flash");
-      PCL = 15; // level, not pixels
+      PCL = 30; // level, not pixels
       PCD = PCL * 1.0;
       break;
     case 10:
@@ -122,12 +126,12 @@ void ModeSet(byte m) {
       PCD = PCL * 1.5;
       break;
     case 9:
-      Serial.println("Mode 9: linear + rainbow");
+      Serial.println("Mode 9: linear + rb");
       PCL = PixelCount;
       PCD = PCL * 0.5;
       break;
     case 8:
-      Serial.println("Mode 8: center + random");
+      Serial.println("Mode 8: center + rand");
       PCD = PCL * 1.5;
       break;
     case 7:
@@ -141,7 +145,7 @@ void ModeSet(byte m) {
       autoLowPass(2);
       break;
     case 5:
-      Serial.println("Mode 5: center + rainbow");
+      Serial.println("Mode 5: center + rb");
       PCD = PCL * 1.0;
       break;
     case 4:
@@ -167,6 +171,7 @@ void ModeSet(byte m) {
       break;
     default:
       Serial.println("Mode 0: center");
+      PCL /= Nq;
       PCD = PCL * 2.0;
       Mode = 0;
       pfMin = 0.3;
@@ -225,7 +230,8 @@ void setup() {
 #else
 
   digitalWrite(AMP, 1);
-  ModeSet(13);
+  
+  ModeSet(0);
 
 #endif
 
@@ -383,9 +389,10 @@ void loop() {
     switch (Mode) {
       case 14:
         m3(sLV, 1);
+        rize();
         break;
       case 13:
-        m8(sLV, Nc, 2);
+        m8(sLV, Nc, 1);
         rize();
         break;
       case 12:
@@ -420,6 +427,7 @@ void loop() {
         break;
       default:
         m0(sLV);
+        rize();
     }
 
     //    Serial.println(millis() - aaa);
@@ -605,22 +613,22 @@ void marker(int n, float c1, float c2, byte m) {
       bwL -= cr;
       target = HsbColor(c2, 1, Br / 3 );
       strip.SetPixelColor(bwL + 1, target);
-      if (m) strip.SetPixelColor(PixelCount - bwL - 1 - cr, target);
+      if (m) strip.SetPixelColor(PCL * 2 - bwL - 1 - cr, target);
       target = target.Dim(63);
       strip.SetPixelColor(bwL + 2, target);
-      if (m) strip.SetPixelColor(PixelCount - bwL - 2 - cr, target);
+      if (m) strip.SetPixelColor(PCL * 2 - bwL - 2 - cr, target);
     }
   }
   target = HsbColor(c2, 1, Br );
   if (m < 2) strip.SetPixelColor(bwL, target);
-  if (m == 1) strip.SetPixelColor(PixelCount - bwL - cr, target);
+  if (m == 1) strip.SetPixelColor(PCL * 2 - bwL - cr, target);
 
   target = HsbColor(c1, 1, Br * 2 );
   strip.SetPixelColor(n - 1, target);
-  if (m) strip.SetPixelColor(PixelCount - n, target);
+  if (m) strip.SetPixelColor(PCL * 2 - n, target);
   if (m == 2) {
     strip.SetPixelColor(PCL * 2 + n - 1, target);
-    strip.SetPixelColor(PCL * 2 - n, target);
+    //    strip.SetPixelColor(PCL * 2 - n, target);
   }
 }
 
@@ -707,7 +715,7 @@ void m6() {
         if (eLV[i] < 0) eLV[i] = 0;
       }
       if (millis() - TLP[i] < cs ) LOWPASS[i] += 2;
-      else if (millis() - TLP[i] > 3000) {
+      else if (millis() - TLP[i] > 2000) {
         LOWPASS[i] -= 10;
         if (LOWPASS[i] < 0) LOWPASS[i] = 0;
       }
@@ -1032,8 +1040,9 @@ void m1(int n) {
 }
 
 void m0(int n) {
+//n=PCL;
   int v = PCL - PCV;
-  int m = v / 5;
+  int m = round(v / 5.);
   int p = round(m / 2.);
   int k = n + v;
   float color[] = {0.33, 0.130, 0.03, 0, 0};
@@ -1045,7 +1054,7 @@ void m0(int n) {
       if ((i - v) % m == p) c = color[(i - v) / m];
       RgbColor res = HsbColor(c, 1, L);
       strip.SetPixelColor(i, res);
-      strip.SetPixelColor(PixelCount - i - 1, res);
+      strip.SetPixelColor(PCL * 2 - i - 1, res);
     }
   }
   marker(k, 0, 0.67, 1);
@@ -1110,9 +1119,10 @@ void m7(int m, int n) {
 
 float lastRB;
 void m8(int n, byte m, byte q) {
+  //  n = PCL; m = 1;
   int k = n + PCL - PCV;
 
-  if (millis() - timeF > 12 * 1000 && n < 3 || timeF == 0 || millis() - timeF > 100000) {
+  if (millis() - timeF > 12 * 1000 && n < 3 || timeF == 0 || millis() - timeF > 90000) {
     timeF = millis();
     lastRB = RB;
     while (abs(lastRB - RB) < 0.125) {
@@ -1127,31 +1137,24 @@ void m8(int n, byte m, byte q) {
   switch (m) {
     case 1:
       L = Map(n, 2, PCL, Br / 4, Br );
-      for (int i = PCL - 1; i < k - 1; i++) {
+      for (int i = PCL ; i < k - 1 ; i++) {
         nn = Map(i - n * 0.07, PCL, k - 4, 0, 1);
         float kk = 1.0;
         if (q == 2) kk = 0.95;
         res = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(HsbColor(RB, kk, L ), HsbColor(RB2, 1, L ), nn);
         strip.SetPixelColor(i, res);
         //        strip.SetPixelColor(PixelCount - i - 1, res);
-        //        if (q == 2) {
-        //          strip.SetPixelColor(i + PCL * 2, res);
         strip.SetPixelColor(PCL * 2 - i - 1, res);
-        //        }
       }
       marker(k, RB2 - 0.5, RB, q);
       break;
     default:
-      for (int i = PCL - 1; i < k - 1; i++) {
+      for (int i = PCL ; i < k - 1; i++) {
         L = Map(i - n * 0.4, PCL, k - 2, Br, Br / 4 );
         nn = Map(i - n * 0.4, PCL, k - 2, 1, 0);
         res = HsbColor(RB, nn, L );
         strip.SetPixelColor(i, res);
-        //        strip.SetPixelColor(PixelCount - i - 1, res);
-        //        if (q == 2) {
-        //          strip.SetPixelColor(i + PCL * 2, res);
         strip.SetPixelColor(PCL * 2 - i - 1, res);
-        //        }
       }
       marker(k, RB - 0.5, RB, q);
   }
