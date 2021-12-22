@@ -56,7 +56,7 @@ EncButton<EB_TICK, S1, S2, KEY> enc;
 HsbColor rnd;
 float RB, RB2;
 float bwL;
-byte Nc, PCV;
+byte Nc, Nq, PCV;
 unsigned long bwD;
 int PCL;
 float PCD;
@@ -87,6 +87,7 @@ float Brightness(byte b) {
 void ModeSet(byte m) {
   timeL = millis();
   Nc = random(2);
+  Nq = random(2, 4);
   Mode = m;
   pfMin = 0.2;
   if (PixelCount % 2) {
@@ -99,12 +100,13 @@ void ModeSet(byte m) {
   switch (m) {
     case 14:
       Serial.println("Mode 14: center + cycle");
-      PCD = PCL * 1.0;
+      PCD = PCL * 1.5;
       break;
     case 13:
       Serial.println("Mode 13: quad + random2");
-      PCL /= 2;
-      PCD = PCL * 2.0;
+      PCL = PCL / Nq;
+      if (Nq > 2) PCL++;
+      PCD = PCL * 1.5;
       break;
     case 12:
       Serial.println("Mode 12: dance");
@@ -222,6 +224,7 @@ void setup() {
   ModeSet(Mode);
 #else
 
+  digitalWrite(AMP, 1);
   ModeSet(13);
 
 #endif
@@ -347,7 +350,7 @@ void loop() {
     } else {
       if (sLV > PCL * 0.5 && sLV > 30) {
         sLV -= 3;
-      } else if (sLV > PCL * 0.4 || sLV > 10) {
+      } else if (sLV > PCL * 0.6 || sLV > 15) {
         sLV -= 2;
       } else if (sLV > 0 ) {
         sLV--;
@@ -375,55 +378,47 @@ void loop() {
 
     long aaa = millis();
 
+    if (Mode != 11 && Mode != 7) blank(0);
+
     switch (Mode) {
       case 14:
-        blank(0);
         m3(sLV, 1);
         break;
       case 13:
-        blank(0);
         m8(sLV, Nc, 2);
+        rize();
         break;
       case 12:
-        blank(0);
         m12(sLV, LV);
         break;
       case 11:
         m11(LV);
         break;
       case 10:
-        blank(0);
         m8(sLV, 1, 1);
         break;
       case 9:
-        blank(0);
         m5(sLV, 1);
         break;
       case 8:
-        blank(0);
         m8(sLV, 0, 1);
         break;
       case 7:
         m7(sLV, LV);
         break;
       case 5:
-        blank(0);
         m5(sLV, 0);
         break;
       case 3:
-        blank(0);
         m3(sLV, 0);
         break;
       case 2:
-        blank(0);
         m2(sLV);
         break;
       case 1:
-        blank(0);
         m1(sLV);
         break;
       default:
-        blank(0);
         m0(sLV);
     }
 
@@ -449,13 +444,21 @@ void loop() {
   // random Mode
   if ( (tNow - timeL) / 1000 > 60 * modeR) {
     //    timeL = tNow;
-    ModeSet(++Mode);
+    //    ModeSet(++Mode);
+    ModeSet(random(15));
   }
 
 } //end loop()
 
 
 /////////////////////////////////////////////////////////////////////////////
+
+void rize(void) {
+  for (int i = 0; i < PCL * 2; i++) {
+    RgbColor color = strip.GetPixelColor(i);
+    for (byte j = Nq - 1; j > 0; j--) strip.SetPixelColor(PCL * 2 * j + i, color);
+  }
+}
 
 void meter(byte n, byte c) {
   blank(1);
@@ -620,7 +623,6 @@ void marker(int n, float c1, float c2, byte m) {
     strip.SetPixelColor(PCL * 2 - n, target);
   }
 }
-
 
 //////////////////////////////////////////////////////////////////
 // Modes
@@ -1127,13 +1129,15 @@ void m8(int n, byte m, byte q) {
       L = Map(n, 2, PCL, Br / 4, Br );
       for (int i = PCL - 1; i < k - 1; i++) {
         nn = Map(i - n * 0.07, PCL, k - 4, 0, 1);
-        res = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(HsbColor(RB, 0.9, L ), HsbColor(RB2, 1, L ), nn);
+        float kk = 1.0;
+        if (q == 2) kk = 0.95;
+        res = HsbColor::LinearBlend<NeoHueBlendShortestDistance>(HsbColor(RB, kk, L ), HsbColor(RB2, 1, L ), nn);
         strip.SetPixelColor(i, res);
-        strip.SetPixelColor(PixelCount - i - 1, res);
-        if (q == 2) {
-          strip.SetPixelColor(i + PCL * 2, res);
-          strip.SetPixelColor(PCL * 2 - i - 1, res);
-        }
+        //        strip.SetPixelColor(PixelCount - i - 1, res);
+        //        if (q == 2) {
+        //          strip.SetPixelColor(i + PCL * 2, res);
+        strip.SetPixelColor(PCL * 2 - i - 1, res);
+        //        }
       }
       marker(k, RB2 - 0.5, RB, q);
       break;
@@ -1143,11 +1147,11 @@ void m8(int n, byte m, byte q) {
         nn = Map(i - n * 0.4, PCL, k - 2, 1, 0);
         res = HsbColor(RB, nn, L );
         strip.SetPixelColor(i, res);
-        strip.SetPixelColor(PixelCount - i - 1, res);
-        if (q == 2) {
-          strip.SetPixelColor(i + PCL * 2, res);
-          strip.SetPixelColor(PCL * 2 - i - 1, res);
-        }
+        //        strip.SetPixelColor(PixelCount - i - 1, res);
+        //        if (q == 2) {
+        //          strip.SetPixelColor(i + PCL * 2, res);
+        strip.SetPixelColor(PCL * 2 - i - 1, res);
+        //        }
       }
       marker(k, RB - 0.5, RB, q);
   }
