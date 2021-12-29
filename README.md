@@ -39,4 +39,6 @@ Now 15 (9 centered, 3 linear, 2 EQ, and flash) animated effects.
 
 Настройки (кроме третьей) сохраняются в eeprom и восстанавливаются после подачи питания.
 
-Пример работы - https://youtu.be/ZGHia4QcqCc
+Пример работы:
+https://youtu.be/ZGHia4QcqCc
+https://youtu.be/5XOJjzPNlhk
