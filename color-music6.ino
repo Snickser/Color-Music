@@ -11,7 +11,7 @@ unsigned long TLP[5];
 byte Mode;
 
 //#define DEBUG
-#define PROD
+//#define PROD
 
 byte cs = 25;        // millis
 float modeR = 3;     // cyclical change of modes in minutes
@@ -99,13 +99,13 @@ void ModeSet(byte m) {
   }
   switch (m) {
     case 14:
-      Serial.println("Mode 14: quad + cycle");
+      Serial.println("Mode 14: quad cycle");
       PCL /= Nq;
       PCD = PCL * 2.0;
       break;
     case 13:
-      Serial.println("Mode 13: quad + rand2");
-      if (Nq == 1) Nq = 2;
+      Serial.println("Mode 13: quad blend");
+      if (Nq == 1) Nq = 2 ;
       PCL /= Nq;
       if (Nq > 3) {
         Nc = 0;
@@ -126,7 +126,7 @@ void ModeSet(byte m) {
       PCD = PCL * 1.5;
       break;
     case 9:
-      Serial.println("Mode 9: linear + rb");
+      Serial.println("Mode 9: linear + rbw");
       PCL = PixelCount;
       PCD = PCL * 0.5;
       break;
@@ -145,7 +145,9 @@ void ModeSet(byte m) {
       autoLowPass(2);
       break;
     case 5:
-      Serial.println("Mode 5: center + rb");
+      Serial.println("Mode 5: center + rbw");
+      Nq = random(1, 3);
+      PCL /= Nq;
       PCD = PCL * 1.0;
       break;
     case 4:
@@ -230,8 +232,8 @@ void setup() {
 #else
 
   digitalWrite(AMP, 1);
-  
-  ModeSet(0);
+
+  ModeSet(5);
 
 #endif
 
@@ -339,7 +341,7 @@ void loop() {
 
     if (plast > pavg && pcur > pavg) {
       pavg += pcur;
-      if (PCD > 0)PCD *= pfMax;
+      if (PCD > 0) PCD *= pfMax;
       else PCD += 5;
     }
     plast = pcur;
@@ -415,6 +417,7 @@ void loop() {
         break;
       case 5:
         m5(sLV, 0);
+        rize();
         break;
       case 3:
         m3(sLV, 0);
@@ -609,7 +612,7 @@ void marker(int n, float c1, float c2, byte m) {
     bwL = n - 1;
     bwD = millis();
   } else {
-    if (millis() - bwD > 700 && m < 2) {
+    if (millis() - bwD > 750 && m < 2) {
       bwL -= cr;
       target = HsbColor(c2, 1, Br / 3 );
       strip.SetPixelColor(bwL + 1, target);
@@ -938,7 +941,7 @@ void m5(int n, byte m) {
         target = HsbColor(RB - cc, 1, br );
     }
     strip.SetPixelColor(i - j, target);
-    if (!m) strip.SetPixelColor(PixelCount - i - 1, target);
+    if (!m) strip.SetPixelColor(PCL * 2 - i - 1, target);
   }
   //  }
   marker(k - j, 0, 0.67, 1 - m);
@@ -1028,8 +1031,9 @@ void m2(int n) {
 }
 
 void m1(int n) {
+  //  n=PCL;
   int m = PCL / 5;
-  float c, color[] = {0.56, 0.33, 0.130, 0.03, 0};
+  float c, color[] = {0.56, 0.335, 0.13, 0.025, 0.9985};
 
   float L = Map(n, 0, PCL, Br / 4, Br);
   for (int i = 0; i < n; i++) {
@@ -1040,12 +1044,12 @@ void m1(int n) {
 }
 
 void m0(int n) {
-//n=PCL;
+  //  n = PCL;
   int v = PCL - PCV;
   int m = round(v / 5.);
   int p = round(m / 2.);
   int k = n + v;
-  float color[] = {0.33, 0.130, 0.03, 0, 0};
+  float color[] = {0.335, 0.13, 0.027, 0.998, 0};
   float c = 0.56;
 
   if (n > 0) {
@@ -1152,7 +1156,7 @@ void m8(int n, byte m, byte q) {
       for (int i = PCL ; i < k - 1; i++) {
         L = Map(i - n * 0.4, PCL, k - 2, Br, Br / 4 );
         nn = Map(i - n * 0.4, PCL, k - 2, 1, 0);
-        res = HsbColor(RB, nn, L );
+        res = HsbColor(RB, nn, L);
         strip.SetPixelColor(i, res);
         strip.SetPixelColor(PCL * 2 - i - 1, res);
       }
