@@ -44,6 +44,7 @@ Now 15 (9 centered, 3 linear, 2 EQ, and flash) animated effects.
 2. https://youtu.be/5XOJjzPNlhk
 
 Картинки:
+
 ![img](20210723_191054p.jpg)
 ![img](20210811_212356.jpg)
 ![img](photo_2021-12-29_19-46-13.jpg)
