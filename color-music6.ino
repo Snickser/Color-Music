@@ -11,7 +11,7 @@ unsigned long TLP[5];
 byte Mode;
 
 //#define DEBUG
-//#define PROD
+#define PROD
 
 byte cs = 25;        // millis
 float modeR = 3;     // cyclical change of modes in minutes
@@ -143,6 +143,7 @@ void ModeSet(byte m) {
     case 6:
       Serial.println("Mode 6: freq five");
       autoLowPass(2);
+      Nq = 2;
       break;
     case 5:
       Serial.println("Mode 5: center + rbw");
@@ -233,7 +234,7 @@ void setup() {
 
   digitalWrite(AMP, 1);
 
-  ModeSet(2);
+  ModeSet(6);
 
 #endif
 
@@ -723,7 +724,7 @@ void m6() {
         if (eLV[i] < 0) eLV[i] = 0;
       }
       if (millis() - TLP[i] < cs ) LOWPASS[i] += 2;
-      else if (millis() - TLP[i] > 2000) {
+      else if (millis() - TLP[i] > 1700) {
         LOWPASS[i] -= 10;
         if (LOWPASS[i] < 0) LOWPASS[i] = 0;
       }
@@ -916,9 +917,10 @@ void m4() {
 float RBn;
 float slow;
 void m5(int n, byte m) {
+  //  n = PCL;
   int j = 0;
   if (m) j = PCL;
-  RBn = 1. / (PCL / 1.4) ; //(PCL / (1 + m + pxRatio / 6.));
+  RBn = 1. / (PCL / 1.3); //(PCL / (1 + m + pxRatio / 6.));
   int k = n + PCL - PCV;
   RgbColor target;
 
