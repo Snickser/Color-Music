@@ -233,7 +233,7 @@ void setup() {
 
   digitalWrite(AMP, 1);
 
-  ModeSet(5);
+  ModeSet(2);
 
 #endif
 
@@ -391,11 +391,11 @@ void loop() {
     switch (Mode) {
       case 14:
         m3(sLV, 1);
-        rize();
+        rize(PCL, 0);
         break;
       case 13:
         m8(sLV, Nc, 1);
-        rize();
+        rize(PCL, 0);
         break;
       case 12:
         m12(sLV, LV);
@@ -417,7 +417,7 @@ void loop() {
         break;
       case 5:
         m5(sLV, 0);
-        rize();
+        rize(PCL, 0);
         break;
       case 3:
         m3(sLV, 0);
@@ -430,7 +430,7 @@ void loop() {
         break;
       default:
         m0(sLV);
-        rize();
+        rize(PCL, 0);
     }
 
     //    Serial.println(millis() - aaa);
@@ -464,10 +464,15 @@ void loop() {
 
 /////////////////////////////////////////////////////////////////////////////
 
-void rize(void) {
+void rize(int p, byte m) {
+  unsigned int n;
   for (int i = 0; i < PCL * 2; i++) {
     RgbColor color = strip.GetPixelColor(i);
-    for (byte j = Nq - 1; j > 0; j--) strip.SetPixelColor(PCL * 2 * j + i, color);
+    for (byte j = Nq - 1; j > 0; j--) {
+      if (m) n = p - 1 - i;
+      else n = p * 2 * j + i;
+      strip.SetPixelColor(n, color);
+    }
   }
 }
 
@@ -571,7 +576,7 @@ void autoLowPass(byte m) {
     LOWP[i] = 0;
   }
 
-  for (int i = 0; i < 50; i++) {
+  for (int i = 0; i < 100; i++) {
     analyzeAudio(m);
     if (m == 2) {
       for (int j = 2; j < 3; j++) {         // первые 2 канала - хлам
@@ -807,40 +812,43 @@ void m6() {
       cr++;
       strip.SetPixelColor(n + p + cr, target);
     }
+    /*
+        n = Map(6, 1, 9, 0, PCL - m);
+        target = HsbColor(0.33f, 1.0f, eLV[1]);
+        strip.SetPixelColor(n + p + cr, target);
+        if (cn > 7) {
+          cr++;
+          strip.SetPixelColor(n + p + cr, target);
+        }
 
-    n = Map(6, 1, 9, 0, PCL - m);
-    target = HsbColor(0.33f, 1.0f, eLV[1]);
-    strip.SetPixelColor(n + p + cr, target);
-    if (cn > 7) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
+        n = Map(7, 1, 9, 0, PCL - m);
+        target = HsbColor(0.125, 1, eLV[2] / 1.3);
+        strip.SetPixelColor(n + p + cr , target);
+        if (cn > 5) {
+          cr++;
+          strip.SetPixelColor(n + p + cr, target);
+        }
 
-    n = Map(7, 1, 9, 0, PCL - m);
-    target = HsbColor(0.125, 1, eLV[2] / 1.3);
-    strip.SetPixelColor(n + p + cr , target);
-    if (cn > 5) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
+        n = Map(8, 1, 9, 0, PCL - m );
+        target = HsbColor(0, 1.0f, eLV[3]);
+        strip.SetPixelColor(n + p + cr, target);
+        if (cn > 3) {
+          cr++;
+          strip.SetPixelColor(n + p + cr, target);
+        }
 
-    n = Map(8, 1, 9, 0, PCL - m );
-    target = HsbColor(0, 1.0f, eLV[3]);
-    strip.SetPixelColor(n + p + cr, target);
-    if (cn > 3) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
-
-    n = Map(9, 1, 9, 0, PCL - m );
-    target = HsbColor(0.77, 1.0f, eLV[4]);
-    strip.SetPixelColor(n + p + cr, target);
-    if (cn > 1) {
-      cr++;
-      strip.SetPixelColor(n + p + cr, target);
-    }
+        n = Map(9, 1, 9, 0, PCL - m );
+        target = HsbColor(0.77, 1.0f, eLV[4]);
+        strip.SetPixelColor(n + p + cr, target);
+        if (cn > 1) {
+          cr++;
+          strip.SetPixelColor(n + p + cr, target);
+        }
+    */
 
   }
+
+  rize(PixelCount, 1);
 
   strip.Show();
 
@@ -980,54 +988,42 @@ void m2(int n) {
   float minL = 0.5 / 24;
   RgbColor target;
   int m = PixelCount / 5;
-  float L;
+  float L, c;
 
   if (n > 0) {
-    L = Map(n, 1, maxL, minL, Br);
-    target = HsbColor(0.67f, 1.0f, L );
+    if (n > maxL) {
+      c = 0.5; L = Br / 2.5;
+    } else {
+      c = 0.67; L = Map(n, 1, maxL, minL, Br);
+    }
+    target = HsbColor(c, 1.0f, L );
     for (int i = m * 2; i < m * 3; i++) {
       strip.SetPixelColor(i, target);
     }
   }
+
   if (n > maxL) {
-    L = Map(n - maxL, 1, maxL, minL, Br);
-    target = HsbColor(0.33f, 1.0f, L );
+    if (n > maxL * 2 ) {
+      c = 0.130; L = Br / 2;
+    } else {
+      c = 0.33f; L = Map(n - maxL, 1, maxL, minL, Br);
+    }
+    target = HsbColor(c, 1.0f, L );
     for (int i = m; i < m * 2; i++) {
       strip.SetPixelColor(i, target);
-    }
-    for (int i = m * 3; i < m * 4; i++) {
-      strip.SetPixelColor(i, target);
-    }
-    target = HsbColor(0.50f, 1.0f, Br / 2 );
-    for (int i = m * 2; i < m * 3; i++) {
-      strip.SetPixelColor(i, target);
+      strip.SetPixelColor(i + m * 2, target);
     }
   }
+
   if (n > maxL * 2) {
     L = Map(n - maxL * 2, 1, maxL, minL, Br );
     target = HsbColor(0, 1.0f, L );
     for (int i = 0; i < m; i++) {
       strip.SetPixelColor(i, target);
-    }
-    //    if (q == 2) target = HsbColor(0.85, 1.f, L / 2. );
-    for (int i = m * 4; i < m * 5; i++) {
-      strip.SetPixelColor(i, target);
-    }
-    target = HsbColor(0.130, 1.0f, Br / 2 );
-    for (int i = m; i < m * 2; i++) {
-      strip.SetPixelColor(i, target);
-    }
-    for (int i = m * 3; i < m * 4; i++) {
-      strip.SetPixelColor(i, target);
+      strip.SetPixelColor(i + m * 4, target);
     }
   }
-  /*  if (q==2) {
-      for (int i = m * 5 - 1; i >= 0; i--) {
-        RgbColor color = strip.GetPixelColor(i);
-        strip.SetPixelColor(PixelCount - i - 1, color);
-      }
-    }
-  */
+
 }
 
 void m1(int n) {
@@ -1067,9 +1063,7 @@ void m0(int n) {
 //byte cn;
 int nLast;
 void m7(int m, int n) {
-
   //  n = 10;
-
   byte nMin = 2;
 
   //  if (n > 7) {
