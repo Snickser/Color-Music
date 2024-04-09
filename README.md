@@ -1,3 +1,5 @@
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://paypal.me/snickser) support me with a donation.
+
 # Welcome to my project - Color-Music
 Arduino Color-Music is an audio reactive VU Meter for WS181x LED strip.
 
