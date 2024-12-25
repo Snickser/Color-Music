@@ -21,7 +21,7 @@ float Br;             // HSL Max 0.5/brC = level
 unsigned int modeR = 180;     // cyclical change of modes in seconds (for first time)
 byte modeL = 1;
 float cLim = 768;    // color for 1/random() 3,6,12,24,48,96,192,384,768
-
+unsigned int rainbow = 48;
 
 ////
 // <
@@ -166,6 +166,7 @@ void loop() {
     modeR = random(29,300);
     modeL = Mode;
     while( Mode == modeL ) Mode = random(1,8);
+    rainbow = random(6,PixelCount);
     nRB=1;
     Serial.print(Mode); Serial.print(" "); Serial.println(modeR);
   } 
@@ -282,16 +283,16 @@ void m5(byte x) {
     nRB=0;
     for(byte i=0;i<PixelCount;i++){
       stp+=1;
-      if(stp>48) stp=0; 
-      float nn = Map(stp, 0, 48, 1, 0);
+      if(stp>rainbow) stp=0;
+      float nn = Map(stp, 0, rainbow, 1, 0);
       RgbColor color = HsbColor(nn, 1, Br);
       strip.SetPixelColor(i, color);
     }
   }
     
     stp+=1;
-    if(stp>48) stp=0; 
-    float nn = Map(stp, 0, 48, 1, 0);
+    if(stp>rainbow) stp=0; 
+    float nn = Map(stp, 0, rainbow, 1, 0);
  //Serial.println(nn,3);
     RgbColor res = HsbColor(nn, 1, Br);
     if(x==0){
